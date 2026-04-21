@@ -10,6 +10,5 @@ try {
 } catch (PDOException $e) {
     
     echo "❌ Error connecting to Server: " . $e->getMessage();
-    header('Location: /db_error.php');
 }
 ?>
