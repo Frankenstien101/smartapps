@@ -19,4 +19,4 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        server-dir: htdocs/  # Files must go into htdocs to be visible
+        server-dir: smartapps.ct.ws/htdocs/  # Files must go into htdocs to be visible
