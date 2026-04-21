@@ -53,7 +53,7 @@ if (isset($_POST['login'])) {
                 $_SESSION['Role'] = $user['Role']; 
 
                 // Redirect to homepage
-                header("Location: HomePage/home.php");
+                header("Location: /SIDJAN/home.php");
                 exit();
             } else {
                 $error = "Invalid password.";
@@ -335,7 +335,7 @@ if (isset($_POST['login'])) {
           <div class="error show"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
-        <form method="post" action="DMS.php">
+        <form method="post" action="/SIDJAN/login.php">
           <div class="form-group">
             <label for="username">Username</label>
             <input 
