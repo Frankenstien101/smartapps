@@ -100,7 +100,7 @@ if (isset($_POST['login'])) {
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        background-image: url('MainImg/BG.JPG');
+        background-image: url('/SIDJAN/mainimg/BG.JPG');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -327,7 +327,7 @@ if (isset($_POST['login'])) {
     <div class="container">
       <div class="card">
         <div class="logo">
-          <img src="MainImg/logo.png" alt=" Logo" Style = "height:105px; width:100px">
+          <img src="/SIDJAN/MainImg/logo.png" alt=" Logo" Style = "height:105px; width:100px">
           <h1>POINT OF SALE</h1>
         </div>
 
