@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-include 'DB/dbcon.php';
+ require_once __DIR__ . '/DB/dbcon.php';
 
 $error = "";
 
@@ -13,29 +13,10 @@ if (isset($_POST['login'])) {
         // Prepare and execute query
         $stmt = $conn->prepare("
             SELECT 
-                u.[UserID],
-                u.[Username],
-                u.[Password],
-                u.[Role],
-                u.[Name_of_user],
-                u.[Company],
-                u.[Site],
-                u.[Status],
-                c.[ID] AS Company_ID,
-                c.[CODE],
-                c.[NAME] AS Company_Name,
-                c.[ADDRESS],
-                c.[STATUS] AS Company_Status,
-                c.[KEY_LETTER],
-                c.[REPORT_HEADER],
-                c.[REPORT_SUB_HEADER],
-                c.[REPORT_SUB_HEADER2]
-            FROM 
-                [dbo].[Aquila_Users] u
-            INNER JOIN 
-                [dbo].[Aquila_COMPANY] c
-                ON u.Company = c.ID 
-            WHERE u.Username = :username
+                USERNAME,PASSWORDHASH,ROLE,FULLNAME
+            FROM users
+                
+            WHERE USERNAME = :username
         ");
         $stmt->bindParam(':username', $username, PDO::PARAM_STR); // Bind username as a string
         $stmt->execute();
@@ -43,14 +24,11 @@ if (isset($_POST['login'])) {
 
         if ($user) {
             // Compare passwords (case-sensitive)
-            if ($user['Password'] === $password) {
+            if ($user['PASSWORDHASH'] === $password) {
                 // Password matches
-                $_SESSION['username'] = $username;
-                $_SESSION['Name_of_user'] = $user['Name_of_user'];
-                $_SESSION['Company_Name'] = $user['Company_Name'];
-                $_SESSION['UserID'] = $user['UserID'];
-                $_SESSION['Company_ID'] = $user['Company_ID']; 
-                $_SESSION['Role'] = $user['Role']; 
+                $_SESSION['username'] = $user['USERNAME'];
+                $_SESSION['NAME'] = $user['FULLNAME'];
+                $_SESSION['Role'] = $user['ROLE']; 
 
                 // Redirect to homepage
                 header("Location: /SIDJAN/home.php");
@@ -73,7 +51,7 @@ if (isset($_POST['login'])) {
     <link rel="icon" type="image/x-icon" href="MainImg/bscr.ico">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login | BLUESYS DMS</title>
+    <title>Login | POS</title>
     <style>
       :root {
         --primary: #0d05a1ff;         /* Indigo */
@@ -123,6 +101,8 @@ if (isset($_POST['login'])) {
         padding: 1rem;
         position: relative;
         z-index: 1;
+    
+       
       }
 
       .card {
@@ -130,11 +110,12 @@ if (isset($_POST['login'])) {
         max-width: 420px;
         background: var(--card-bg);
         border-radius: 12px;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(0px);
         padding: 2.5rem;
         border: 1px solid rgba(255, 255, 255, 0.08);
         box-shadow: 0 4px 50px rgba(0, 0, 0, 0.2);
-        
+        animation: pulse 3s ease-in-out infinite;
+        z-index: 1;
       }
 
       .logo {
@@ -327,7 +308,7 @@ if (isset($_POST['login'])) {
     <div class="container">
       <div class="card">
         <div class="logo">
-          <img src="/SIDJAN/mainimg/logo.png" alt=" Logo" Style = "height:105px; width:100px">
+          <img src="/SIDJAN/mainimg/logo.png" alt=" Logo" Style = "height:150px; width:150px">
           <h1>POINT OF SALE</h1>
         </div>
 
@@ -369,7 +350,7 @@ if (isset($_POST['login'])) {
     </div>
 
     <div class="footer">
-      © <?= date('Y') ?> BLUESYS. All rights reserved.
+      © <?= date('Y') ?> Smartapps. All rights reserved.
     </div>
   </body>
 </html>

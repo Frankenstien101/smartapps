@@ -288,10 +288,17 @@
         <div class="cards-container">
             <!-- DMS -->
             <div class="app-card">
-                <img src="/Services/img/bscr.png" alt="DMS" class="app-logo" onerror="this.src='https://placehold.co/56x56/1e2a4a/white?text=D'">
+                <img src="/img/pos.jpg" alt="DMS" class="app-logo" onerror="this.src='https://placehold.co/56x56/1e2a4a/white?text=D'">
                 <div class="app-name">POS</div>
                 <p class="app-description">Point of Sale system</p>
                 <a href="/SIDJAN/login.php" class="app-button">Visit →</a>
+            </div>
+
+             <div class="app-card">
+                <img src="/img/BSMS.png" alt="DMS" class="app-logo" onerror="this.src='https://placehold.co/56x56/1e2a4a/white?text=D'">
+                <div class="app-name">STOCK INVENTORY</div>
+                <p class="app-description">Stock inventory management system</p>
+                <a href="/it_equipment_inventory/index.php" class="app-button">Visit →</a>
             </div>
            
         </div>
