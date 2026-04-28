@@ -1,9 +1,11 @@
 <?php
-// api_repairs.php - Backend API for Repair Management
+// api_repairs.php - Backend API for Repair Management with Branch Support
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+include '../DB/dbcon.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -14,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-try {
-    $conn = new PDO(
-        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-        "sa",
-        'bspi.@dm1n'
-    );
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-    exit();
-}
+//try {
+//    $conn = new PDO(
+//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
+//        "sa",
+//        'bspi.@dm1n'
+//    );
+//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+//} catch (PDOException $e) {
+//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
+//    exit();
+//}
 
 // Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
@@ -34,6 +36,8 @@ $action = $_GET['action'] ?? '';
 // Start session for user tracking
 session_start();
 $currentUser = $_SESSION['username'] ?? $_SESSION['NAME'] ?? 'system';
+$currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch';
+$userRole = $_SESSION['role'] ?? 'staff';
 
 // ============================================
 // API ROUTES
@@ -65,21 +69,23 @@ try {
 // ============================================
 
 function handleGetRequest($conn, $action) {
+    global $currentBranch, $userRole;
+    
     switch ($action) {
         case 'getRepairs':
-            getRepairs($conn);
+            getRepairs($conn, $currentBranch, $userRole);
             break;
         case 'getRepairById':
-            getRepairById($conn);
+            getRepairById($conn, $currentBranch);
             break;
         case 'getRepairStats':
-            getRepairStats($conn);
+            getRepairStats($conn, $currentBranch);
             break;
         case 'getRepairByCustomer':
-            getRepairByCustomer($conn);
+            getRepairByCustomer($conn, $currentBranch);
             break;
         case 'getRepairByDevice':
-            getRepairByDevice($conn);
+            getRepairByDevice($conn, $currentBranch);
             break;
         default:
             echo json_encode(['error' => 'Invalid action']);
@@ -87,11 +93,12 @@ function handleGetRequest($conn, $action) {
 }
 
 function handlePostRequest($conn, $action, $currentUser) {
+    global $currentBranch;
     $data = json_decode(file_get_contents('php://input'), true);
     
     switch ($action) {
         case 'createRepair':
-            createRepair($conn, $data, $currentUser);
+            createRepair($conn, $data, $currentUser, $currentBranch);
             break;
         case 'updateRepairStatus':
             updateRepairStatus($conn, $data, $currentUser);
@@ -130,10 +137,10 @@ function handleDeleteRequest($conn, $action) {
 }
 
 // ============================================
-// REPAIR FUNCTIONS
+// REPAIR FUNCTIONS WITH BRANCH
 // ============================================
 
-function createRepair($conn, $data, $currentUser) {
+function createRepair($conn, $data, $currentUser, $currentBranch) {
     $repairNo = $data['repair_no'] ?? 'RPR-' . date('Ymd') . '-' . rand(1000, 9999);
     $customerName = trim($data['customer_name'] ?? '');
     $customerPhone = $data['customer_phone'] ?? '';
@@ -174,12 +181,12 @@ function createRepair($conn, $data, $currentUser) {
                   (RepairNo, CustomerName, CustomerPhone, CustomerEmail, CustomerAddress,
                    DeviceType, DeviceBrand, DeviceModel, SerialNumber, Issue,
                    EstimatedCost, EstimatedDays, EstimatedCompletionDate, Status,
-                   Notes, CreatedBy, CreatedAt)
+                   Notes, CreatedBy, CreatedAt, Branch)
                   VALUES 
                   (:no, :name, :phone, :email, :address,
                    :dtype, :dbrand, :dmodel, :serial, :issue,
                    :ecost, :edays, :edate, 'pending',
-                   :notes, :user, GETDATE())";
+                   :notes, :user, GETDATE(), :branch)";
         
         $stmt = $conn->prepare($query);
         $stmt->execute([
@@ -197,7 +204,8 @@ function createRepair($conn, $data, $currentUser) {
             ':edays' => $estimatedDays,
             ':edate' => $estimatedDate,
             ':notes' => $notes,
-            ':user' => $currentUser
+            ':user' => $currentUser,
+            ':branch' => $currentBranch
         ]);
         
         $repairId = $conn->lastInsertId();
@@ -209,7 +217,8 @@ function createRepair($conn, $data, $currentUser) {
             'message' => 'Repair request created successfully',
             'repair_id' => $repairId,
             'repair_no' => $repairNo,
-            'estimated_completion' => $estimatedDate
+            'estimated_completion' => $estimatedDate,
+            'branch' => $currentBranch
         ]);
         
     } catch (PDOException $e) {
@@ -218,13 +227,27 @@ function createRepair($conn, $data, $currentUser) {
     }
 }
 
-function getRepairs($conn) {
-    $limit = $_GET['limit'] ?? 100;
+function getRepairs($conn, $currentBranch, $userRole) {
+    $limit = intval($_GET['limit'] ?? 100);
     $status = $_GET['status'] ?? 'all';
     
-    $statusFilter = $status !== 'all' ? "WHERE r.Status = :status" : "";
+    // Use string concatenation for status filter to avoid parameter issues
+    $statusFilter = "";
+    if ($status !== 'all') {
+        $statusFilter = "AND r.Status = '$status'";
+    }
     
-    $query = "SELECT TOP (:limit) 
+    // Branch filter - staff can only see their branch, admin can see all
+    $branchFilter = "";
+    $params = [];
+    
+    if ($userRole !== 'admin') {
+        $branchFilter = "AND r.Branch = :branch";
+        $params[':branch'] = $currentBranch;
+    }
+    
+    // Use string concatenation for TOP limit
+    $query = "SELECT TOP $limit
                 r.RepairID, r.RepairNo, r.CustomerName, r.CustomerPhone,
                 r.DeviceType, r.DeviceBrand, r.DeviceModel, r.SerialNumber,
                 r.Issue, r.EstimatedCost, r.ActualCost, r.EstimatedDays,
@@ -233,23 +256,26 @@ function getRepairs($conn) {
                 r.Status, r.Notes,
                 FORMAT(r.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
                 r.CreatedBy, r.Technician,
-                FORMAT(r.UpdatedAt, 'yyyy-MM-dd HH:mm') AS UpdatedAt
+                FORMAT(r.UpdatedAt, 'yyyy-MM-dd HH:mm') AS UpdatedAt,
+                r.Branch
               FROM Repairs r
-              $statusFilter
+              WHERE 1=1 $statusFilter $branchFilter
               ORDER BY r.RepairID DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    if ($status !== 'all') {
-        $stmt->bindParam(':status', $status);
+    
+    // Bind parameters
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
     }
+    
     $stmt->execute();
     $repairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $repairs, 'count' => count($repairs)]);
 }
 
-function getRepairById($conn) {
+function getRepairById($conn, $currentBranch) {
     $id = $_GET['id'] ?? 0;
     
     if (!$id) {
@@ -264,10 +290,10 @@ function getRepairById($conn) {
                 FORMAT(r.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
                 FORMAT(r.UpdatedAt, 'yyyy-MM-dd HH:mm') AS UpdatedAt
               FROM Repairs r
-              WHERE r.RepairID = :id";
+              WHERE r.RepairID = :id AND r.Branch = :branch";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $id]);
+    $stmt->execute([':id' => $id, ':branch' => $currentBranch]);
     $repair = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($repair) {
@@ -290,7 +316,7 @@ function getRepairById($conn) {
     }
 }
 
-function getRepairStats($conn) {
+function getRepairStats($conn, $currentBranch) {
     $query = "SELECT 
                 COUNT(*) AS TotalRepairs,
                 SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingRepairs,
@@ -300,16 +326,20 @@ function getRepairStats($conn) {
                 SUM(CASE WHEN Status = 'for_pickup' THEN 1 ELSE 0 END) AS ForPickupRepairs,
                 ISNULL(SUM(ActualCost), 0) AS TotalRevenue,
                 ISNULL(AVG(CAST(DATEDIFF(DAY, CreatedAt, ActualCompletionDate) AS FLOAT)), 0) AS AvgCompletionDays
-              FROM Repairs";
+              FROM Repairs
+              WHERE Branch = :branch";
     
-    $stmt = $conn->query($query);
+    $stmt = $conn->prepare($query);
+    $stmt->execute([':branch' => $currentBranch]);
     $stats = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // Get today's repairs
+    // Get today's repairs for this branch
     $todayQuery = "SELECT COUNT(*) AS TodayRepairs 
                    FROM Repairs 
-                   WHERE CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE)";
-    $stmt = $conn->query($todayQuery);
+                   WHERE CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE) 
+                   AND Branch = :branch";
+    $stmt = $conn->prepare($todayQuery);
+    $stmt->execute([':branch' => $currentBranch]);
     $today = $stmt->fetch(PDO::FETCH_ASSOC);
     
     $stats['TodayRepairs'] = $today['TodayRepairs'] ?? 0;
@@ -317,7 +347,7 @@ function getRepairStats($conn) {
     echo json_encode(['success' => true, 'data' => $stats]);
 }
 
-function getRepairByCustomer($conn) {
+function getRepairByCustomer($conn, $currentBranch) {
     $phone = $_GET['phone'] ?? '';
     $name = $_GET['name'] ?? '';
     
@@ -332,20 +362,22 @@ function getRepairByCustomer($conn) {
                 FORMAT(CreatedAt, 'yyyy-MM-dd') AS CreatedAt,
                 FORMAT(EstimatedCompletionDate, 'yyyy-MM-dd') AS EstimatedCompletionDate
               FROM Repairs
-              WHERE CustomerPhone = :phone OR CustomerName LIKE :name
+              WHERE (CustomerPhone = :phone OR CustomerName LIKE :name)
+              AND Branch = :branch
               ORDER BY RepairID DESC";
     
     $stmt = $conn->prepare($query);
     $stmt->execute([
         ':phone' => $phone,
-        ':name' => "%{$name}%"
+        ':name' => "%{$name}%",
+        ':branch' => $currentBranch
     ]);
     $repairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $repairs]);
 }
 
-function getRepairByDevice($conn) {
+function getRepairByDevice($conn, $currentBranch) {
     $serialNumber = $_GET['serial'] ?? '';
     $deviceType = $_GET['type'] ?? '';
     
@@ -359,13 +391,15 @@ function getRepairByDevice($conn) {
                 DeviceBrand, DeviceModel, Issue, Status,
                 FORMAT(CreatedAt, 'yyyy-MM-dd') AS CreatedAt
               FROM Repairs
-              WHERE SerialNumber = :serial OR DeviceType LIKE :type
+              WHERE (SerialNumber = :serial OR DeviceType LIKE :type)
+              AND Branch = :branch
               ORDER BY RepairID DESC";
     
     $stmt = $conn->prepare($query);
     $stmt->execute([
         ':serial' => $serialNumber,
-        ':type' => "%{$deviceType}%"
+        ':type' => "%{$deviceType}%",
+        ':branch' => $currentBranch
     ]);
     $repairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     

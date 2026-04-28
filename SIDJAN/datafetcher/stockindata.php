@@ -1,9 +1,11 @@
 <?php
-// api.php - Backend API for POS, Stock Management, and Returns/Warranty
+// product_api.php - Backend API for Product Management (with Branch Support)
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+include '../DB/dbcon.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -14,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-try {
-    $conn = new PDO(
-        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-        "sa",
-        'bspi.@dm1n'
-    );
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-    exit();
-}
+//try {
+//    $conn = new PDO(
+//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
+//        "sa",
+//        'bspi.@dm1n'
+//    );
+//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+//} catch (PDOException $e) {
+//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
+//    exit();
+//}
 
 // Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
@@ -34,6 +36,8 @@ $action = $_GET['action'] ?? '';
 // Start session for user tracking
 session_start();
 $currentUser = $_SESSION['username'] ?? $_SESSION['NAME'] ?? 'system';
+$currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Koronadal';
+$userRole = $_SESSION['role'] ?? 'staff';
 
 // ============================================
 // API ROUTES
@@ -65,119 +69,55 @@ try {
 // ============================================
 
 function handleGetRequest($conn, $action) {
+    global $currentBranch, $userRole;
+    
     switch ($action) {
-        // Product endpoints
         case 'getProducts':
-            getProducts($conn);
+            getProducts($conn, $currentBranch);
             break;
         case 'getProductById':
-            getProductById($conn);
+            getProductById($conn, $currentBranch);
             break;
-        case 'searchProducts':
-            searchProducts($conn);
+        case 'getProductUnits':
+            getProductUnits($conn, $currentBranch);
             break;
         case 'getLowStock':
-            getLowStockProducts($conn);
-            break;
-        
-        // Stock endpoints
-        case 'getStockHistory':
-            getStockHistory($conn);
+            getLowStockProducts($conn, $currentBranch);
             break;
         case 'getDashboardStats':
-            getDashboardStats($conn);
+            getDashboardStats($conn, $currentBranch);
             break;
-        
-        // POS/Sales endpoints
+        case 'getStockHistory':
+            getStockHistory($conn, $currentBranch);
+            break;
         case 'getSales':
-            getSales($conn);
+            getSales($conn, $currentBranch, $userRole);
             break;
         case 'getSaleById':
-            getSaleById($conn);
+            getSaleById($conn, $currentBranch);
             break;
         case 'getTodaySales':
-            getTodaySales($conn);
+            getTodaySales($conn, $currentBranch);
             break;
-        case 'getSalesReport':
-            getSalesReport($conn);
-            break;
-        case 'getReceipt':
-            getReceipt($conn);
-            break;
-        
-        // Customer endpoints
-        case 'getCustomers':
-            getCustomers($conn);
-            break;
-        case 'getCustomerById':
-            getCustomerById($conn);
-            break;
-        
-        // ============================================
-        // RETURNS & WARRANTY ENDPOINTS
-        // ============================================
-        case 'getReturns':
-            getReturns($conn);
-            break;
-        case 'getWarrantyClaims':
-            getWarrantyClaims($conn);
-            break;
-        case 'getReturnById':
-            getReturnById($conn);
-            break;
-        case 'getWarrantyById':
-            getWarrantyById($conn);
-            break;
-        case 'getReturnStats':
-            getReturnStats($conn);
-            break;
-        
         default:
             echo json_encode(['error' => 'Invalid action']);
     }
 }
 
 function handlePostRequest($conn, $action, $currentUser) {
+    global $currentBranch;
     $data = json_decode(file_get_contents('php://input'), true);
     
     switch ($action) {
-        // Stock endpoints
-        case 'addStock':
-            addStockToProduct($conn, $data, $currentUser);
-            break;
         case 'addProduct':
-            addNewProduct($conn, $data, $currentUser);
+            addNewProduct($conn, $data, $currentUser, $currentBranch);
             break;
-        
-        // POS/Sales endpoints
+        case 'addStock':
+            addStockToProduct($conn, $data, $currentUser, $currentBranch);
+            break;
         case 'saveTransaction':
-            saveTransaction($conn, $data, $currentUser);
+            saveTransaction($conn, $data, $currentUser, $currentBranch);
             break;
-        case 'addCustomer':
-            addCustomer($conn, $data);
-            break;
-        
-        // Repair endpoints
-        case 'addRepair':
-            addRepair($conn, $data, $currentUser);
-            break;
-        
-        // ============================================
-        // RETURNS & WARRANTY ENDPOINTS
-        // ============================================
-        case 'processReturn':
-            processReturn($conn, $data, $currentUser);
-            break;
-        case 'submitWarranty':
-            submitWarranty($conn, $data, $currentUser);
-            break;
-        case 'updateReturnStatus':
-            updateReturnStatus($conn, $data, $currentUser);
-            break;
-        case 'updateWarrantyStatus':
-            updateWarrantyStatus($conn, $data, $currentUser);
-            break;
-        
         default:
             echo json_encode(['error' => 'Invalid action']);
     }
@@ -188,25 +128,8 @@ function handlePutRequest($conn, $action, $currentUser) {
     
     switch ($action) {
         case 'updateProduct':
-            updateProduct($conn, $data);
+            updateProduct($conn, $data, $currentUser);
             break;
-        case 'updateStock':
-            updateStockDirect($conn, $data, $currentUser);
-            break;
-        case 'updateSaleStatus':
-            updateSaleStatus($conn, $data);
-            break;
-        
-        // ============================================
-        // RETURNS & WARRANTY ENDPOINTS
-        // ============================================
-        case 'approveReturn':
-            approveReturn($conn, $data, $currentUser);
-            break;
-        case 'approveWarranty':
-            approveWarranty($conn, $data, $currentUser);
-            break;
-        
         default:
             echo json_encode(['error' => 'Invalid action']);
     }
@@ -214,9 +137,6 @@ function handlePutRequest($conn, $action, $currentUser) {
 
 function handleDeleteRequest($conn, $action) {
     switch ($action) {
-        case 'clearHistory':
-            clearStockHistory($conn);
-            break;
         case 'deleteProduct':
             deleteProduct($conn);
             break;
@@ -229,27 +149,41 @@ function handleDeleteRequest($conn, $action) {
 // PRODUCT FUNCTIONS
 // ============================================
 
-function getProducts($conn) {
+function getProducts($conn, $currentBranch) {
     $query = "SELECT 
-                ProductID, 
-                ProductCode, 
-                ProductName, 
-                Category, 
-                Brand, 
-                CurrentStock, 
-                CostPrice, 
-                SellingPrice,
-                CAST(CurrentStock AS INT) AS StockLevel
-              FROM Products 
-              ORDER BY ProductName";
+                p.ProductID, 
+                p.ProductCode, 
+                p.ProductName, 
+                p.Category, 
+                p.Brand, 
+                p.CostPrice, 
+                p.SellingPrice,
+                p.ProductImagePath,
+                p.Description,
+                ISNULL(p.TotalQuantity, 0) as TotalQuantity,
+                ISNULL(p.AvailableQuantity, 0) as AvailableQuantity,
+                ISNULL(p.SoldQuantity, 0) as SoldQuantity
+              FROM Products p
+              WHERE p.Branch = ?
+              ORDER BY p.ProductName";
     
-    $stmt = $conn->query($query);
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$currentBranch]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Also get units count for each product
+    foreach ($products as &$product) {
+        $unitStmt = $conn->prepare("SELECT COUNT(*) as unit_count FROM ProductUnits WHERE ProductID = ? AND Branch = ? AND Status = 'available'");
+        $unitStmt->execute([$product['ProductID'], $currentBranch]);
+        $unitCount = $unitStmt->fetch(PDO::FETCH_ASSOC);
+        $product['HasUnits'] = $unitCount['unit_count'] > 0;
+        $product['CurrentStock'] = $product['AvailableQuantity'];
+    }
     
     echo json_encode(['success' => true, 'data' => $products, 'count' => count($products)]);
 }
 
-function getProductById($conn) {
+function getProductById($conn, $currentBranch) {
     $productId = $_GET['id'] ?? 0;
     
     if (!$productId) {
@@ -263,56 +197,59 @@ function getProductById($conn) {
                 ProductName, 
                 Category, 
                 Brand, 
-                CurrentStock, 
+                ISNULL(TotalQuantity, 0) as TotalQuantity,
+                ISNULL(AvailableQuantity, 0) as AvailableQuantity,
+                ISNULL(SoldQuantity, 0) as SoldQuantity,
                 CostPrice, 
-                SellingPrice
+                SellingPrice,
+                ProductImagePath,
+                Description
               FROM Products 
-              WHERE ProductID = :id";
+              WHERE ProductID = ? AND Branch = ?";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $productId]);
+    $stmt->execute([$productId, $currentBranch]);
     $product = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($product) {
+        $unitsQuery = "SELECT UnitID, UnitNumber, IMEINumber, SerialNumber, Status, Branch,
+                              CONVERT(VARCHAR, CreatedAt, 120) AS CreatedAt
+                       FROM ProductUnits
+                       WHERE ProductID = ? AND Branch = ?
+                       ORDER BY UnitNumber";
+        $stmt = $conn->prepare($unitsQuery);
+        $stmt->execute([$productId, $currentBranch]);
+        $product['Units'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
         echo json_encode(['success' => true, 'data' => $product]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Product not found']);
     }
 }
 
-function searchProducts($conn) {
-    $search = $_GET['search'] ?? '';
+function getProductUnits($conn, $currentBranch) {
+    $productId = $_GET['product_id'] ?? 0;
     
-    if (strlen($search) < 2) {
-        echo json_encode(['success' => true, 'data' => []]);
+    if (!$productId) {
+        echo json_encode(['success' => false, 'message' => 'Product ID required']);
         return;
     }
     
     $query = "SELECT 
-                ProductID, 
-                ProductCode, 
-                ProductName, 
-                Category, 
-                Brand, 
-                CurrentStock, 
-                CostPrice, 
-                SellingPrice
-              FROM Products 
-              WHERE ProductName LIKE :search 
-                 OR ProductCode LIKE :search
-                 OR Brand LIKE :search
-                 OR Category LIKE :search
-              ORDER BY ProductName";
+                UnitID, UnitNumber, IMEINumber, SerialNumber, Status,
+                CONVERT(VARCHAR, CreatedAt, 120) AS CreatedAt
+              FROM ProductUnits
+              WHERE ProductID = ? AND Branch = ? AND Status = 'available'
+              ORDER BY UnitNumber";
     
     $stmt = $conn->prepare($query);
-    $searchTerm = "%{$search}%";
-    $stmt->execute([':search' => $searchTerm]);
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$productId, $currentBranch]);
+    $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    echo json_encode(['success' => true, 'data' => $products, 'count' => count($products)]);
+    echo json_encode(['success' => true, 'data' => $units]);
 }
 
-function getLowStockProducts($conn) {
+function getLowStockProducts($conn, $currentBranch) {
     $threshold = $_GET['threshold'] ?? 10;
     
     $query = "SELECT 
@@ -320,28 +257,31 @@ function getLowStockProducts($conn) {
                 ProductCode, 
                 ProductName, 
                 Brand, 
-                CurrentStock, 
+                ISNULL(AvailableQuantity, 0) as CurrentStock, 
                 SellingPrice,
-                Category
+                Category,
+                ProductImagePath
               FROM Products 
-              WHERE CurrentStock < :threshold 
-              ORDER BY CurrentStock ASC";
+              WHERE ISNULL(AvailableQuantity, 0) < ? AND Branch = ?
+              ORDER BY AvailableQuantity ASC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':threshold' => $threshold]);
+    $stmt->execute([$threshold, $currentBranch]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $products, 'count' => count($products)]);
 }
 
-function addNewProduct($conn, $data, $currentUser) {
+function addNewProduct($conn, $data, $currentUser, $currentBranch) {
     $productCode = $data['product_code'] ?? 'P' . date('YmdHis');
     $productName = trim($data['product_name'] ?? '');
     $category = $data['category'] ?? '';
     $brand = $data['brand'] ?? '';
-    $initialStock = intval($data['initial_stock'] ?? 0);
+    $description = $data['description'] ?? '';
     $costPrice = floatval($data['cost_price'] ?? 0);
     $sellingPrice = floatval($data['selling_price'] ?? 0);
+    $productImage = $data['product_image'] ?? null;
+    $units = $data['units'] ?? [];
     $invoiceNo = $data['invoice_no'] ?? '';
     $supplierName = $data['supplier_name'] ?? '';
     
@@ -355,69 +295,120 @@ function addNewProduct($conn, $data, $currentUser) {
         return;
     }
     
+    // Check if units have IMEI/Serial
+    $hasSerials = false;
+    foreach ($units as $unit) {
+        if (!empty($unit['imei']) || !empty($unit['serial'])) {
+            $hasSerials = true;
+            break;
+        }
+    }
+    
     // Check if product already exists
-    $checkQuery = "SELECT COUNT(*) as count FROM Products WHERE ProductName = :name";
-    $stmt = $conn->prepare($checkQuery);
-    $stmt->execute([':name' => $productName]);
-    $exists = $stmt->fetch(PDO::FETCH_ASSOC);
+    $checkStmt = $conn->prepare("SELECT COUNT(*) as count FROM Products WHERE ProductName = ? AND Branch = ?");
+    $checkStmt->execute([$productName, $currentBranch]);
+    $exists = $checkStmt->fetch(PDO::FETCH_ASSOC);
     
     if ($exists['count'] > 0) {
-        echo json_encode(['success' => false, 'message' => 'Product with this name already exists']);
+        echo json_encode(['success' => false, 'message' => 'Product with this name already exists in this branch']);
         return;
+    }
+    
+    // Save image to file system
+    $imagePath = null;
+    if ($productImage && !empty($productImage) && strpos($productImage, 'data:image') === 0) {
+        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/SIDJAN/uploads/products/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        
+        $extension = 'jpg';
+        if (strpos($productImage, 'data:image/png') === 0) $extension = 'png';
+        elseif (strpos($productImage, 'data:image/gif') === 0) $extension = 'gif';
+        elseif (strpos($productImage, 'data:image/jpeg') === 0) $extension = 'jpg';
+        
+        $filename = 'product_' . time() . '_' . rand(1000, 9999) . '.' . $extension;
+        $fullPath = $uploadDir . $filename;
+        
+        $imageData = explode(',', $productImage);
+        if (isset($imageData[1])) {
+            $imageContent = base64_decode($imageData[1]);
+            if (file_put_contents($fullPath, $imageContent)) {
+                $imagePath = '/SIDJAN/uploads/products/' . $filename;
+            }
+        }
     }
     
     $conn->beginTransaction();
     
     try {
-        $insertQuery = "INSERT INTO Products 
-                        (ProductCode, ProductName, Category, Brand, CurrentStock, CostPrice, SellingPrice, CreatedAt, UpdatedAt)
-                        VALUES 
-                        (:code, :name, :cat, :brand, :stock, :cost, :price, GETDATE(), GETDATE())";
+        $totalQuantity = count($units);
         
-        $stmt = $conn->prepare($insertQuery);
-        $stmt->execute([
-            ':code' => $productCode,
-            ':name' => $productName,
-            ':cat' => $category,
-            ':brand' => $brand,
-            ':stock' => $initialStock,
-            ':cost' => $costPrice,
-            ':price' => $sellingPrice
+        // Insert product
+        $insertStmt = $conn->prepare("INSERT INTO Products 
+                        (ProductCode, ProductName, Category, Brand, Description, ProductImagePath, 
+                         CostPrice, SellingPrice, TotalQuantity, AvailableQuantity, SoldQuantity, 
+                         Branch, CreatedBy, CreatedAt)
+                        VALUES 
+                        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, GETDATE())");
+        
+        $insertStmt->execute([
+            $productCode, $productName, $category, $brand, $description, $imagePath,
+            $costPrice, $sellingPrice, $totalQuantity, $totalQuantity,
+            $currentBranch, $currentUser
         ]);
         
         $newProductId = $conn->lastInsertId();
         
-        if ($initialStock > 0) {
-            $totalCost = $initialStock * $costPrice;
+        // If there are units with IMEI/Serial, add them to ProductUnits with branch
+        if ($hasSerials && $totalQuantity > 0) {
+            $unitStmt = $conn->prepare("INSERT INTO ProductUnits 
+                          (ProductID, UnitNumber, IMEINumber, SerialNumber, Status, CostPrice, SellingPrice, Branch, CreatedBy, CreatedAt)
+                          VALUES 
+                          (?, ?, ?, ?, 'available', ?, ?, ?, ?, GETDATE())");
             
-            $historyQuery = "INSERT INTO StockInHistory 
-                            (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
-                             CostPrice, TotalCost, InvoiceNo, SupplierName, Notes, TransactionDate, AddedBy)
-                            VALUES 
-                            (:pid, :pname, :qty, 0, :newstock, 
-                             :cost, :total, :inv, :supp, 'New product added', GETDATE(), :user)";
-            
-            $stmt = $conn->prepare($historyQuery);
-            $stmt->execute([
-                ':pid' => $newProductId,
-                ':pname' => $productName,
-                ':qty' => $initialStock,
-                ':newstock' => $initialStock,
-                ':cost' => $costPrice,
-                ':total' => $totalCost,
-                ':inv' => $invoiceNo,
-                ':supp' => $supplierName,
-                ':user' => $currentUser
-            ]);
+            $unitNumber = 1;
+            foreach ($units as $unit) {
+                $unitStmt->execute([
+                    $newProductId, $unitNumber,
+                    $unit['imei'] ?? '',
+                    $unit['serial'] ?? '',
+                    $costPrice, $sellingPrice, $currentBranch, $currentUser
+                ]);
+                $unitNumber++;
+            }
+            $message = "Product '{$productName}' added successfully with {$totalQuantity} unit(s) (with IMEI/Serial tracking)";
+        } else {
+            // Direct quantity mode - no individual unit tracking
+            $message = "Product '{$productName}' added successfully with {$totalQuantity} unit(s) (bulk quantity)";
         }
+        
+        // Add stock history
+        $totalCost = $totalQuantity * $costPrice;
+        
+        $historyStmt = $conn->prepare("INSERT INTO StockInHistory 
+                        (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                         CostPrice, TotalCost, InvoiceNo, SupplierName, Notes, TransactionDate, AddedBy, Branch)
+                        VALUES 
+                        (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)");
+        
+        $historyStmt->execute([
+            $newProductId, $productName, $totalQuantity, $totalQuantity,
+            $costPrice, $totalCost, $invoiceNo, $supplierName, $description,
+            $currentUser, $currentBranch
+        ]);
         
         $conn->commit();
         
         echo json_encode([
             'success' => true, 
-            'message' => "Product '{$productName}' added successfully",
+            'message' => $message,
             'product_id' => $newProductId,
-            'product_code' => $productCode
+            'product_code' => $productCode,
+            'image_path' => $imagePath,
+            'units_added' => $totalQuantity,
+            'mode' => $hasSerials ? 'per_unit' : 'direct_quantity',
+            'branch' => $currentBranch
         ]);
         
     } catch (PDOException $e) {
@@ -426,42 +417,205 @@ function addNewProduct($conn, $data, $currentUser) {
     }
 }
 
-function updateProduct($conn, $data) {
+function addStockToProduct($conn, $data, $currentUser, $currentBranch) {
     $productId = $data['product_id'] ?? 0;
-    $productName = $data['product_name'] ?? '';
-    $category = $data['category'] ?? '';
-    $brand = $data['brand'] ?? '';
-    $costPrice = $data['cost_price'] ?? 0;
-    $sellingPrice = $data['selling_price'] ?? 0;
+    $units = $data['units'] ?? [];
+    $invoiceNo = $data['invoice_no'] ?? '';
+    $supplierName = $data['supplier'] ?? '';
+    $notes = $data['notes'] ?? '';
     
     if (!$productId) {
         echo json_encode(['success' => false, 'message' => 'Product ID is required']);
         return;
     }
     
-    $query = "UPDATE Products 
-              SET ProductName = :name,
-                  Category = :cat,
-                  Brand = :brand,
-                  CostPrice = :cost,
-                  SellingPrice = :price,
-                  UpdatedAt = GETDATE()
-              WHERE ProductID = :id";
+    if (empty($units)) {
+        echo json_encode(['success' => false, 'message' => 'At least one unit is required']);
+        return;
+    }
     
-    $stmt = $conn->prepare($query);
-    $stmt->execute([
-        ':name' => $productName,
-        ':cat' => $category,
-        ':brand' => $brand,
-        ':cost' => $costPrice,
-        ':price' => $sellingPrice,
-        ':id' => $productId
-    ]);
+    // Check if this is direct quantity mode (units have no IMEI/Serial)
+    $hasSerials = false;
+    foreach ($units as $unit) {
+        if (!empty($unit['imei']) || !empty($unit['serial'])) {
+            $hasSerials = true;
+            break;
+        }
+    }
     
-    if ($stmt->rowCount() > 0) {
+    // Get product details
+    $productStmt = $conn->prepare("SELECT ProductName, TotalQuantity, AvailableQuantity, CostPrice, SellingPrice 
+                                   FROM Products WHERE ProductID = ? AND Branch = ?");
+    $productStmt->execute([$productId, $currentBranch]);
+    $product = $productStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$product) {
+        echo json_encode(['success' => false, 'message' => 'Product not found']);
+        return;
+    }
+    
+    $conn->beginTransaction();
+    
+    try {
+        $newUnitsCount = count($units);
+        
+        if ($hasSerials) {
+            // ===== PER UNIT MODE: Add each unit as a separate row in ProductUnits with branch =====
+            // Get current max unit number
+            $maxUnitStmt = $conn->prepare("SELECT ISNULL(MAX(UnitNumber), 0) as MaxUnit FROM ProductUnits WHERE ProductID = ? AND Branch = ?");
+            $maxUnitStmt->execute([$productId, $currentBranch]);
+            $maxUnit = $maxUnitStmt->fetchColumn();
+            
+            $unitStmt = $conn->prepare("INSERT INTO ProductUnits 
+                          (ProductID, UnitNumber, IMEINumber, SerialNumber, Status, CostPrice, SellingPrice, Branch, CreatedBy, CreatedAt)
+                          VALUES 
+                          (?, ?, ?, ?, 'available', ?, ?, ?, ?, GETDATE())");
+            
+            $unitNumber = $maxUnit + 1;
+            foreach ($units as $unit) {
+                $unitStmt->execute([
+                    $productId, $unitNumber,
+                    $unit['imei'] ?? '',
+                    $unit['serial'] ?? '',
+                    $product['CostPrice'], $product['SellingPrice'], $currentBranch, $currentUser
+                ]);
+                $unitNumber++;
+            }
+            
+            // Update product quantities
+            $updateStmt = $conn->prepare("UPDATE Products 
+                            SET TotalQuantity = ISNULL(TotalQuantity, 0) + ?,
+                                AvailableQuantity = ISNULL(AvailableQuantity, 0) + ?,
+                                UpdatedAt = GETDATE()
+                            WHERE ProductID = ? AND Branch = ?");
+            $updateStmt->execute([$newUnitsCount, $newUnitsCount, $productId, $currentBranch]);
+            
+            $oldStock = $product['TotalQuantity'];
+            $newStock = $oldStock + $newUnitsCount;
+            
+            // Log each unit addition
+            $historyStmt = $conn->prepare("INSERT INTO StockInHistory 
+                            (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                             CostPrice, TotalCost, InvoiceNo, SupplierName, Notes, TransactionDate, AddedBy, Branch)
+                            VALUES 
+                            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)");
+            
+            $historyStmt->execute([
+                $productId, $product['ProductName'], $newUnitsCount, $oldStock, $newStock,
+                $product['CostPrice'], $newUnitsCount * $product['CostPrice'], $invoiceNo, $supplierName, $notes,
+                $currentUser, $currentBranch
+            ]);
+            
+            $message = "Added {$newUnitsCount} new unit(s) with IMEI/Serial to {$product['ProductName']}";
+            
+        } else {
+            // ===== DIRECT QUANTITY MODE: Just update product quantities (no unit tracking) =====
+            $oldStock = $product['TotalQuantity'];
+            $newStock = $oldStock + $newUnitsCount;
+            
+            // Update product quantities only
+            $updateStmt = $conn->prepare("UPDATE Products 
+                            SET TotalQuantity = ISNULL(TotalQuantity, 0) + ?,
+                                AvailableQuantity = ISNULL(AvailableQuantity, 0) + ?,
+                                UpdatedAt = GETDATE()
+                            WHERE ProductID = ? AND Branch = ?");
+            $updateStmt->execute([$newUnitsCount, $newUnitsCount, $productId, $currentBranch]);
+            
+            // Log stock history
+            $historyStmt = $conn->prepare("INSERT INTO StockInHistory 
+                            (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                             CostPrice, TotalCost, InvoiceNo, SupplierName, Notes, TransactionDate, AddedBy, Branch)
+                            VALUES 
+                            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)");
+            
+            $historyStmt->execute([
+                $productId, $product['ProductName'], $newUnitsCount, $oldStock, $newStock,
+                $product['CostPrice'], $newUnitsCount * $product['CostPrice'], $invoiceNo, $supplierName, $notes,
+                $currentUser, $currentBranch
+            ]);
+            
+            $message = "Added {$newUnitsCount} unit(s) to {$product['ProductName']} (Direct Quantity)";
+        }
+        
+        $conn->commit();
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => $message,
+            'units_added' => $newUnitsCount,
+            'total_units' => $product['TotalQuantity'] + $newUnitsCount,
+            'mode' => $hasSerials ? 'per_unit' : 'direct_quantity',
+            'branch' => $currentBranch
+        ]);
+        
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+}
+
+function updateProduct($conn, $data, $currentUser) {
+    $productId = $data['product_id'] ?? 0;
+    $productName = $data['product_name'] ?? '';
+    $category = $data['category'] ?? '';
+    $brand = $data['brand'] ?? '';
+    $costPrice = $data['cost_price'] ?? 0;
+    $sellingPrice = $data['selling_price'] ?? 0;
+    $description = $data['description'] ?? '';
+    $productImage = $data['product_image'] ?? null;
+    
+    if (!$productId) {
+        echo json_encode(['success' => false, 'message' => 'Product ID is required']);
+        return;
+    }
+    
+    $imagePath = null;
+    if ($productImage && !empty($productImage) && strpos($productImage, 'data:image') === 0) {
+        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/SIDJAN/uploads/products/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        
+        $extension = 'jpg';
+        if (strpos($productImage, 'data:image/png') === 0) {
+            $extension = 'png';
+        } elseif (strpos($productImage, 'data:image/gif') === 0) {
+            $extension = 'gif';
+        }
+        
+        $filename = 'product_' . time() . '_' . rand(1000, 9999) . '.' . $extension;
+        $fullPath = $uploadDir . $filename;
+        
+        $imageData = explode(',', $productImage);
+        if (isset($imageData[1])) {
+            $imageContent = base64_decode($imageData[1]);
+            if (file_put_contents($fullPath, $imageContent)) {
+                $imagePath = '/SIDJAN/uploads/products/' . $filename;
+            }
+        }
+    }
+    
+    try {
+        if ($imagePath) {
+            $stmt = $conn->prepare("UPDATE Products 
+                      SET ProductName = ?, Category = ?, Brand = ?, 
+                          CostPrice = ?, SellingPrice = ?, ProductImagePath = ?,
+                          Description = ?, UpdatedAt = GETDATE(), UpdatedBy = ?
+                      WHERE ProductID = ?");
+            $stmt->execute([$productName, $category, $brand, $costPrice, $sellingPrice, $imagePath, $description, $currentUser, $productId]);
+        } else {
+            $stmt = $conn->prepare("UPDATE Products 
+                      SET ProductName = ?, Category = ?, Brand = ?, 
+                          CostPrice = ?, SellingPrice = ?, 
+                          Description = ?, UpdatedAt = GETDATE(), UpdatedBy = ?
+                      WHERE ProductID = ?");
+            $stmt->execute([$productName, $category, $brand, $costPrice, $sellingPrice, $description, $currentUser, $productId]);
+        }
+        
         echo json_encode(['success' => true, 'message' => 'Product updated successfully']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'No changes made or product not found']);
+        
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 }
 
@@ -474,105 +628,37 @@ function deleteProduct($conn) {
         return;
     }
     
-    $checkQuery = "SELECT COUNT(*) as count FROM StockInHistory WHERE ProductID = :id";
-    $stmt = $conn->prepare($checkQuery);
-    $stmt->execute([':id' => $productId]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Check if product has sold units
+    $checkStmt = $conn->prepare("SELECT COUNT(*) as count FROM ProductUnits WHERE ProductID = ? AND Status = 'sold'");
+    $checkStmt->execute([$productId]);
+    $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
     
     if ($result['count'] > 0) {
-        echo json_encode(['success' => false, 'message' => 'Cannot delete product with stock history']);
+        echo json_encode(['success' => false, 'message' => 'Cannot delete product with sold units']);
         return;
     }
     
-    $query = "DELETE FROM Products WHERE ProductID = :id";
-    $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $productId]);
+    // Get image path
+    $imgStmt = $conn->prepare("SELECT ProductImagePath FROM Products WHERE ProductID = ?");
+    $imgStmt->execute([$productId]);
+    $product = $imgStmt->fetch(PDO::FETCH_ASSOC);
     
-    if ($stmt->rowCount() > 0) {
+    $conn->beginTransaction();
+    
+    try {
+        $conn->prepare("DELETE FROM ProductUnits WHERE ProductID = ?")->execute([$productId]);
+        $conn->prepare("DELETE FROM Products WHERE ProductID = ?")->execute([$productId]);
+        
+        $conn->commit();
+        
+        if ($product && $product['ProductImagePath']) {
+            $imagePath = $_SERVER['DOCUMENT_ROOT'] . $product['ProductImagePath'];
+            if (file_exists($imagePath)) {
+                unlink($imagePath);
+            }
+        }
+        
         echo json_encode(['success' => true, 'message' => 'Product deleted successfully']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Product not found']);
-    }
-}
-
-// ============================================
-// STOCK FUNCTIONS
-// ============================================
-
-function addStockToProduct($conn, $data, $currentUser) {
-    $productId = $data['product_id'] ?? 0;
-    $quantity = $data['quantity'] ?? 0;
-    $costPrice = $data['cost_price'] ?? 0;
-    $invoiceNo = $data['invoice_no'] ?? '';
-    $supplierName = $data['supplier'] ?? '';
-    $notes = $data['notes'] ?? '';
-    
-    if (!$productId) {
-        echo json_encode(['success' => false, 'message' => 'Product ID is required']);
-        return;
-    }
-    
-    if ($quantity <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Quantity must be greater than 0']);
-        return;
-    }
-    
-    $conn->beginTransaction();
-    
-    try {
-        $query = "SELECT CurrentStock, ProductName, CostPrice FROM Products WHERE ProductID = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([':id' => $productId]);
-        $product = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$product) {
-            echo json_encode(['success' => false, 'message' => 'Product not found']);
-            return;
-        }
-        
-        $oldStock = $product['CurrentStock'];
-        $productName = $product['ProductName'];
-        $newStock = $oldStock + $quantity;
-        $totalCost = $quantity * ($costPrice > 0 ? $costPrice : $product['CostPrice']);
-        $finalCostPrice = $costPrice > 0 ? $costPrice : $product['CostPrice'];
-        
-        $updateQuery = "UPDATE Products 
-                        SET CurrentStock = :newStock, 
-                            UpdatedAt = GETDATE() 
-                        WHERE ProductID = :id";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->execute([':newStock' => $newStock, ':id' => $productId]);
-        
-        $historyQuery = "INSERT INTO StockInHistory 
-                        (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
-                         CostPrice, TotalCost, InvoiceNo, SupplierName, Notes, TransactionDate, AddedBy)
-                        VALUES 
-                        (:pid, :pname, :qty, :old, :new, 
-                         :cost, :total, :inv, :supp, :notes, GETDATE(), :user)";
-        
-        $stmt = $conn->prepare($historyQuery);
-        $stmt->execute([
-            ':pid' => $productId,
-            ':pname' => $productName,
-            ':qty' => $quantity,
-            ':old' => $oldStock,
-            ':new' => $newStock,
-            ':cost' => $finalCostPrice,
-            ':total' => $totalCost,
-            ':inv' => $invoiceNo,
-            ':supp' => $supplierName,
-            ':notes' => $notes,
-            ':user' => $currentUser
-        ]);
-        
-        $conn->commit();
-        
-        echo json_encode([
-            'success' => true, 
-            'message' => "Added {$quantity} unit(s) to {$productName}",
-            'new_stock' => $newStock,
-            'product_name' => $productName
-        ]);
         
     } catch (PDOException $e) {
         $conn->rollBack();
@@ -580,154 +666,102 @@ function addStockToProduct($conn, $data, $currentUser) {
     }
 }
 
-function updateStockDirect($conn, $data, $currentUser) {
-    $productId = $data['product_id'] ?? 0;
-    $newStock = $data['new_stock'] ?? 0;
-    $reason = $data['reason'] ?? 'Manual adjustment';
-    
-    if (!$productId) {
-        echo json_encode(['success' => false, 'message' => 'Product ID is required']);
-        return;
-    }
-    
-    if ($newStock < 0) {
-        echo json_encode(['success' => false, 'message' => 'Stock cannot be negative']);
-        return;
-    }
-    
-    $conn->beginTransaction();
-    
-    try {
-        $query = "SELECT CurrentStock, ProductName, CostPrice FROM Products WHERE ProductID = :id";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([':id' => $productId]);
-        $product = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$product) {
-            echo json_encode(['success' => false, 'message' => 'Product not found']);
-            return;
-        }
-        
-        $oldStock = $product['CurrentStock'];
-        $productName = $product['ProductName'];
-        $quantityDiff = $newStock - $oldStock;
-        
-        $updateQuery = "UPDATE Products SET CurrentStock = :stock, UpdatedAt = GETDATE() WHERE ProductID = :id";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->execute([':stock' => $newStock, ':id' => $productId]);
-        
-        if ($quantityDiff != 0) {
-            $historyQuery = "INSERT INTO StockInHistory 
-                            (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
-                             CostPrice, TotalCost, Notes, TransactionDate, AddedBy)
-                            SELECT 
-                                :pid, :pname, :qty, :old, :new,
-                                CostPrice, CostPrice * ABS(:qty), :notes, GETDATE(), :user
-                            FROM Products WHERE ProductID = :pid2";
-            
-            $stmt = $conn->prepare($historyQuery);
-            $stmt->execute([
-                ':pid' => $productId,
-                ':pname' => $productName,
-                ':qty' => $quantityDiff,
-                ':old' => $oldStock,
-                ':new' => $newStock,
-                ':notes' => $reason . ' (Manual adjustment)',
-                ':user' => $currentUser,
-                ':pid2' => $productId
-            ]);
-        }
-        
-        $conn->commit();
-        
-        echo json_encode([
-            'success' => true, 
-            'message' => "Stock updated from {$oldStock} to {$newStock}",
-            'new_stock' => $newStock
-        ]);
-        
-    } catch (PDOException $e) {
-        $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-    }
-}
-
-function getStockHistory($conn) {
-    $limit = $_GET['limit'] ?? 100;
+function getStockHistory($conn, $currentBranch) {
+    $limit = intval($_GET['limit'] ?? 100);
     $productId = $_GET['product_id'] ?? null;
     
-    if ($productId) {
-        $query = "SELECT TOP (:limit) 
-                    TransactionID, ProductID, ProductName, QuantityAdded, OldStock, NewStock,
-                    CostPrice, TotalCost, InvoiceNo, SupplierName, Notes,
-                    FORMAT(TransactionDate, 'yyyy-MM-dd HH:mm:ss') AS TransactionDate,
-                    AddedBy
-                  FROM StockInHistory
-                  WHERE ProductID = :productId
-                  ORDER BY TransactionDate DESC";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindParam(':productId', $productId, PDO::PARAM_INT);
-    } else {
-        $query = "SELECT TOP (:limit) 
-                    TransactionID, ProductID, ProductName, QuantityAdded, OldStock, NewStock,
-                    CostPrice, TotalCost, InvoiceNo, SupplierName, Notes,
-                    FORMAT(TransactionDate, 'yyyy-MM-dd HH:mm:ss') AS TransactionDate,
-                    AddedBy
-                  FROM StockInHistory
-                  ORDER BY TransactionDate DESC";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    try {
+        if ($productId) {
+            $query = "SELECT TOP $limit 
+                        TransactionID, ProductID, ProductName, QuantityAdded, OldStock, NewStock,
+                        CostPrice, TotalCost, InvoiceNo, SupplierName, Notes,
+                        FORMAT(TransactionDate, 'yyyy-MM-dd HH:mm:ss') AS TransactionDate,
+                        AddedBy
+                      FROM StockInHistory
+                      WHERE ProductID = ? AND Branch = ?
+                      ORDER BY TransactionDate DESC";
+            $stmt = $conn->prepare($query);
+            $stmt->execute([$productId, $currentBranch]);
+        } else {
+            $query = "SELECT TOP $limit 
+                        TransactionID, ProductID, ProductName, QuantityAdded, OldStock, NewStock,
+                        CostPrice, TotalCost, InvoiceNo, SupplierName, Notes,
+                        FORMAT(TransactionDate, 'yyyy-MM-dd HH:mm:ss') AS TransactionDate,
+                        AddedBy
+                      FROM StockInHistory
+                      WHERE Branch = ?
+                      ORDER BY TransactionDate DESC";
+            $stmt = $conn->prepare($query);
+            $stmt->execute([$currentBranch]);
+        }
+        
+        $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'data' => $history, 'count' => count($history)]);
+        
+    } catch (PDOException $e) {
+        echo json_encode(['error' => 'Database error', 'message' => $e->getMessage()]);
     }
-    
-    $stmt->execute();
-    $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $history, 'count' => count($history)]);
 }
 
-function clearStockHistory($conn) {
-    $confirm = $_GET['confirm'] ?? false;
-    
-    if (!$confirm) {
-        echo json_encode(['success' => false, 'message' => 'Confirmation required']);
-        return;
+function getDashboardStats($conn, $currentBranch) {
+    try {
+        // Total Products
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM Products WHERE Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $totalProducts = $stmt->fetchColumn();
+        
+        // Total Stock Value
+        $stmt = $conn->prepare("SELECT ISNULL(SUM(ISNULL(TotalQuantity,0) * ISNULL(CostPrice,0)), 0) FROM Products WHERE Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $totalStockValue = $stmt->fetchColumn();
+        
+        // Low Stock Count
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM Products WHERE ISNULL(AvailableQuantity,0) < 10 AND Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $lowStockCount = $stmt->fetchColumn();
+        
+        // Total Units Added (30 days)
+        $stmt = $conn->prepare("SELECT ISNULL(SUM(QuantityAdded), 0) FROM StockInHistory WHERE TransactionDate >= DATEADD(DAY, -30, GETDATE()) AND Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $totalUnitsAdded = $stmt->fetchColumn();
+        
+        // Total Units In Stock
+        $stmt = $conn->prepare("SELECT ISNULL(SUM(ISNULL(TotalQuantity,0)), 0) FROM Products WHERE Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $totalUnitsInStock = $stmt->fetchColumn();
+        
+        // Total Sales 30 Days
+        $stmt = $conn->prepare("SELECT ISNULL(SUM(TotalAmount), 0) FROM Sales WHERE SaleDate >= DATEADD(DAY, -30, GETDATE()) AND Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $totalSales30Days = $stmt->fetchColumn();
+        
+        // Transactions This Week
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM Sales WHERE SaleDate >= DATEADD(DAY, -7, GETDATE()) AND Branch = ?");
+        $stmt->execute([$currentBranch]);
+        $transactionsThisWeek = $stmt->fetchColumn();
+        
+        $stats = [
+            'TotalProducts' => intval($totalProducts),
+            'TotalStockValue' => floatval($totalStockValue),
+            'LowStockCount' => intval($lowStockCount),
+            'TotalUnitsAdded' => intval($totalUnitsAdded),
+            'TotalUnitsInStock' => intval($totalUnitsInStock),
+            'TotalSales30Days' => floatval($totalSales30Days),
+            'TransactionsThisWeek' => intval($transactionsThisWeek)
+        ];
+        
+        echo json_encode(['success' => true, 'data' => $stats]);
+        
+    } catch (PDOException $e) {
+        echo json_encode(['error' => 'Database error', 'message' => $e->getMessage()]);
     }
-    
-    $query = "DELETE FROM StockInHistory";
-    $rowCount = $conn->exec($query);
-    
-    echo json_encode(['success' => true, 'message' => "Stock history cleared. {$rowCount} records deleted."]);
-}
-
-function getDashboardStats($conn) {
-    $query = "SELECT 
-                (SELECT COUNT(*) FROM Products) AS TotalProducts,
-                (SELECT ISNULL(SUM(CurrentStock * CostPrice), 0) FROM Products) AS TotalStockValue,
-                (SELECT COUNT(*) FROM Products WHERE CurrentStock < 10) AS LowStockCount,
-                (SELECT ISNULL(SUM(QuantityAdded), 0) FROM StockInHistory 
-                 WHERE TransactionDate >= DATEADD(DAY, -30, GETDATE())) AS TotalUnitsAdded,
-                (SELECT ISNULL(SUM(TotalCost), 0) FROM StockInHistory 
-                 WHERE TransactionDate >= DATEADD(DAY, -30, GETDATE())) AS TotalValueAdded,
-                (SELECT ISNULL(SUM(CurrentStock), 0) FROM Products) AS TotalUnitsInStock,
-                (SELECT ISNULL(SUM(TotalAmount), 0) FROM Sales 
-                 WHERE SaleDate >= DATEADD(DAY, -30, GETDATE())) AS TotalSales30Days,
-                (SELECT COUNT(*) FROM Sales WHERE SaleDate >= DATEADD(DAY, -7, GETDATE())) AS TransactionsThisWeek,
-                (SELECT COUNT(*) FROM Returns WHERE Status = 'pending') AS PendingReturns,
-                (SELECT COUNT(*) FROM WarrantyClaims WHERE Status = 'pending') AS PendingWarranty
-              FROM (SELECT 1 AS dummy) t";
-    
-    $stmt = $conn->query($query);
-    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $stats]);
 }
 
 // ============================================
-// POS / SALES FUNCTIONS
+// SALES / TRANSACTION FUNCTIONS
 // ============================================
 
-function saveTransaction($conn, $data, $currentUser) {
+function saveTransaction($conn, $data, $currentUser, $currentBranch) {
     $receiptNo = $data['receipt_no'] ?? 'INV-' . date('YmdHis');
     $customerName = $data['customer'] ?? 'Walk-in Customer';
     $customerPhone = $data['customer_phone'] ?? '';
@@ -737,7 +771,6 @@ function saveTransaction($conn, $data, $currentUser) {
     $amountReceived = $data['amount_received'] ?? 0;
     $change = $data['change'] ?? 0;
     
-    // Validate input
     if (empty($items)) {
         echo json_encode(['success' => false, 'message' => 'No items in transaction']);
         return;
@@ -754,96 +787,180 @@ function saveTransaction($conn, $data, $currentUser) {
         // Insert into Sales table
         $salesQuery = "INSERT INTO Sales 
                       (ReceiptNo, CustomerName, CustomerPhone, TotalAmount, PaymentMethod, 
-                       AmountReceived, ChangeAmount, SaleDate, CreatedBy, Status)
+                       AmountReceived, ChangeAmount, SaleDate, CreatedBy, Status, Branch)
                       VALUES 
-                      (:receipt, :customer, :phone, :total, :payment, 
-                       :received, :change, GETDATE(), :user, 'completed')";
+                      (?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, 'completed', ?)";
         
         $stmt = $conn->prepare($salesQuery);
         $stmt->execute([
-            ':receipt' => $receiptNo,
-            ':customer' => $customerName,
-            ':phone' => $customerPhone,
-            ':total' => $totalAmount,
-            ':payment' => $paymentMethod,
-            ':received' => $amountReceived,
-            ':change' => $change,
-            ':user' => $currentUser
+            $receiptNo, $customerName, $customerPhone, $totalAmount, $paymentMethod,
+            $amountReceived, $change, $currentUser, $currentBranch
         ]);
         
         $saleId = $conn->lastInsertId();
         
-        // Insert sale items and update stock
         foreach ($items as $item) {
-            // Get product details
-            $productQuery = "SELECT ProductID, ProductCode, ProductName, CurrentStock, SellingPrice 
-                            FROM Products 
-                            WHERE ProductID = :id OR ProductCode = :code";
-            $stmt = $conn->prepare($productQuery);
-            $stmt->execute([
-                ':id' => $item['id'],
-                ':code' => $item['product_code'] ?? ''
-            ]);
-            $product = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$product) {
-                throw new Exception("Product not found: " . ($item['name'] ?? 'Unknown'));
+            // Check if this is a serialized item (has unit_id)
+            if (isset($item['unit_id']) && !empty($item['unit_id'])) {
+                // ===== SERIALIZED ITEM (UNIT-BASED) =====
+                $unitQuery = "SELECT u.UnitID, u.ProductID, u.Status, u.IMEINumber, u.SerialNumber, u.UnitNumber,
+                                     p.ProductName, p.SellingPrice, p.CostPrice
+                              FROM ProductUnits u
+                              INNER JOIN Products p ON u.ProductID = p.ProductID
+                              WHERE u.UnitID = ? AND u.Status = 'available' AND p.Branch = ?";
+                
+                $stmt = $conn->prepare($unitQuery);
+                $stmt->execute([$item['unit_id'], $currentBranch]);
+                $unit = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$unit) {
+                    throw new Exception("Unit not found or already sold");
+                }
+                
+                // Mark the unit as sold
+                $updateUnitQuery = "UPDATE ProductUnits 
+                                   SET Status = 'sold', 
+                                       SoldAt = GETDATE(), 
+                                       SoldTo = ?,
+                                       SoldBy = ?,
+                                       SaleID = ?
+                                   WHERE UnitID = ?";
+                
+                $stmt = $conn->prepare($updateUnitQuery);
+                $stmt->execute([
+                    $customerName, $currentUser, $saleId, $item['unit_id']
+                ]);
+                
+                // Get current product quantities
+                $productQtyQuery = "SELECT AvailableQuantity, TotalQuantity FROM Products WHERE ProductID = ? AND Branch = ?";
+                $stmt = $conn->prepare($productQtyQuery);
+                $stmt->execute([$unit['ProductID'], $currentBranch]);
+                $product = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                $oldAvailable = $product['AvailableQuantity'];
+                $newAvailable = $oldAvailable - 1;
+                
+                // Update product quantities
+                $updateProductQuery = "UPDATE Products 
+                                       SET AvailableQuantity = ?,
+                                           SoldQuantity = ISNULL(SoldQuantity, 0) + 1,
+                                           UpdatedAt = GETDATE()
+                                       WHERE ProductID = ? AND Branch = ?";
+                
+                $stmt = $conn->prepare($updateProductQuery);
+                $stmt->execute([$newAvailable, $unit['ProductID'], $currentBranch]);
+                
+                // Insert into SaleItems (without UnitNumber, IMEINumber, SerialNumber columns)
+                $itemQuery = "INSERT INTO SaleItems 
+                             (SaleID, ProductID, ProductCode, ProductName, Quantity, Price, Total, CreatedAt)
+                             VALUES 
+                             (?, ?, ?, ?, 1, ?, ?, GETDATE())";
+                
+                $stmt = $conn->prepare($itemQuery);
+                $stmt->execute([
+                    $saleId,
+                    $unit['ProductID'],
+                    $item['product_code'] ?? '',
+                    $unit['ProductName'],
+                    $unit['SellingPrice'],
+                    $unit['SellingPrice']
+                ]);
+                
+                // Log stock history with unit info in notes
+                $historyQuery = "INSERT INTO StockInHistory 
+                                (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                                 CostPrice, TotalCost, Notes, TransactionDate, AddedBy, Branch)
+                                VALUES 
+                                (?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)";
+                
+                $stmt = $conn->prepare($historyQuery);
+                $stmt->execute([
+                    $unit['ProductID'],
+                    $unit['ProductName'],
+                    -1,
+                    $oldAvailable,
+                    $newAvailable,
+                    $unit['CostPrice'],
+                    $unit['CostPrice'],
+                    "POS Sale - Unit #{$unit['UnitNumber']} - IMEI: {$unit['IMEINumber']} - Receipt: {$receiptNo}",
+                    $currentUser,
+                    $currentBranch
+                ]);
+                
+            } else {
+                // ===== BULK ITEM (QUANTITY-BASED) =====
+                $productQuery = "SELECT ProductID, ProductCode, ProductName, AvailableQuantity, SellingPrice, CostPrice
+                                FROM Products 
+                                WHERE ProductID = ? AND Branch = ?";
+                
+                $stmt = $conn->prepare($productQuery);
+                $stmt->execute([$item['id'], $currentBranch]);
+                $product = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$product) {
+                    throw new Exception("Product not found: " . ($item['name'] ?? 'Unknown'));
+                }
+                
+                // Check available quantity
+                if ($product['AvailableQuantity'] < $item['quantity']) {
+                    throw new Exception("Insufficient stock for product: {$product['ProductName']}. Available: {$product['AvailableQuantity']}, Requested: {$item['quantity']}");
+                }
+                
+                $itemQuery = "INSERT INTO SaleItems 
+                             (SaleID, ProductID, ProductCode, ProductName, Quantity, Price, Total, CreatedAt)
+                             VALUES 
+                             (?, ?, ?, ?, ?, ?, ?, GETDATE())";
+                
+                $stmt = $conn->prepare($itemQuery);
+                $stmt->execute([
+                    $saleId,
+                    $product['ProductID'],
+                    $product['ProductCode'],
+                    $product['ProductName'],
+                    $item['quantity'],
+                    $item['price'],
+                    $item['total']
+                ]);
+                
+                $oldAvailable = $product['AvailableQuantity'];
+                $newAvailable = $oldAvailable - $item['quantity'];
+                
+                // Update product quantities
+                $stockQuery = "UPDATE Products 
+                              SET AvailableQuantity = ?,
+                                  SoldQuantity = ISNULL(SoldQuantity, 0) + ?,
+                                  UpdatedAt = GETDATE()
+                              WHERE ProductID = ? AND Branch = ?";
+                
+                $stmt = $conn->prepare($stockQuery);
+                $stmt->execute([
+                    $newAvailable,
+                    $item['quantity'],
+                    $product['ProductID'],
+                    $currentBranch
+                ]);
+                
+                // Log stock history
+                $historyQuery = "INSERT INTO StockInHistory 
+                                (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                                 CostPrice, TotalCost, Notes, TransactionDate, AddedBy, Branch)
+                                VALUES 
+                                (?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)";
+                
+                $stmt = $conn->prepare($historyQuery);
+                $stmt->execute([
+                    $product['ProductID'],
+                    $product['ProductName'],
+                    -$item['quantity'],
+                    $oldAvailable,
+                    $newAvailable,
+                    $item['price'],
+                    $item['total'],
+                    "POS Sale (Bulk) - Receipt: {$receiptNo}",
+                    $currentUser,
+                    $currentBranch
+                ]);
             }
-            
-            // Check if enough stock
-            if ($product['CurrentStock'] < $item['quantity']) {
-                throw new Exception("Insufficient stock for product: " . $product['ProductName']);
-            }
-            
-            // Insert sale item
-            $itemQuery = "INSERT INTO SaleItems 
-                         (SaleID, ProductID, ProductCode, ProductName, Quantity, Price, Total, CreatedAt)
-                         VALUES 
-                         (:saleId, :productId, :productCode, :productName, :qty, :price, :total, GETDATE())";
-            
-            $stmt = $conn->prepare($itemQuery);
-            $stmt->execute([
-                ':saleId' => $saleId,
-                ':productId' => $product['ProductID'],
-                ':productCode' => $product['ProductCode'],
-                ':productName' => $product['ProductName'],
-                ':qty' => $item['quantity'],
-                ':price' => $item['price'],
-                ':total' => $item['total']
-            ]);
-            
-            // Update product stock (decrease)
-            $stockQuery = "UPDATE Products 
-                          SET CurrentStock = CurrentStock - :qty,
-                              UpdatedAt = GETDATE()
-                          WHERE ProductID = :id";
-            $stmt = $conn->prepare($stockQuery);
-            $stmt->execute([
-                ':qty' => $item['quantity'],
-                ':id' => $product['ProductID']
-            ]);
-            
-            // Record stock out in history
-            $historyQuery = "INSERT INTO StockInHistory 
-                            (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
-                             CostPrice, TotalCost, Notes, TransactionDate, AddedBy)
-                            VALUES 
-                            (:pid, :pname, :qty, :old, :new, 
-                             :cost, :total, :notes, GETDATE(), :user)";
-            
-            $newStock = $product['CurrentStock'] - $item['quantity'];
-            $stmt = $conn->prepare($historyQuery);
-            $stmt->execute([
-                ':pid' => $product['ProductID'],
-                ':pname' => $product['ProductName'],
-                ':qty' => -$item['quantity'],
-                ':old' => $product['CurrentStock'],
-                ':new' => $newStock,
-                ':cost' => $item['price'],
-                ':total' => $item['total'],
-                ':notes' => "POS Sale - Receipt: {$receiptNo}",
-                ':user' => $currentUser
-            ]);
         }
         
         $conn->commit();
@@ -852,15 +969,7 @@ function saveTransaction($conn, $data, $currentUser) {
             'success' => true,
             'message' => 'Transaction saved successfully',
             'receipt_no' => $receiptNo,
-            'sale_id' => $saleId,
-            'transaction' => [
-                'receipt_no' => $receiptNo,
-                'customer' => $customerName,
-                'total' => $totalAmount,
-                'payment_method' => $paymentMethod,
-                'date' => date('Y-m-d H:i:s'),
-                'items_count' => count($items)
-            ]
+            'sale_id' => $saleId
         ]);
         
     } catch (Exception $e) {
@@ -872,10 +981,15 @@ function saveTransaction($conn, $data, $currentUser) {
     }
 }
 
-function getSales($conn) {
-    $limit = $_GET['limit'] ?? 50;
+function getSales($conn, $currentBranch, $userRole) {
+    $limit = intval($_GET['limit'] ?? 50);
     
-    $query = "SELECT TOP (:limit) 
+    $branchFilter = "";
+    if ($userRole !== 'admin') {
+        $branchFilter = "AND Branch = :branch";
+    }
+    
+    $query = "SELECT TOP $limit
                 SaleID, 
                 ReceiptNo, 
                 CustomerName, 
@@ -886,19 +1000,23 @@ function getSales($conn) {
                 ChangeAmount,
                 FORMAT(SaleDate, 'yyyy-MM-dd HH:mm:ss') AS SaleDate,
                 CreatedBy,
-                Status
+                Status,
+                Branch
               FROM Sales
+              WHERE 1=1 $branchFilter
               ORDER BY SaleDate DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    if ($userRole !== 'admin') {
+        $stmt->bindParam(':branch', $currentBranch);
+    }
     $stmt->execute();
     $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $sales]);
 }
 
-function getSaleById($conn) {
+function getSaleById($conn, $currentBranch) {
     $saleId = $_GET['id'] ?? 0;
     
     if (!$saleId) {
@@ -906,6 +1024,7 @@ function getSaleById($conn) {
         return;
     }
     
+    // Get sale info with items, and also get unit details from ProductUnits
     $query = "SELECT 
                 s.SaleID, 
                 s.ReceiptNo, 
@@ -922,13 +1041,17 @@ function getSaleById($conn) {
                 si.ProductName, 
                 si.Quantity, 
                 si.Price, 
-                si.Total
+                si.Total,
+                pu.UnitNumber,
+                pu.IMEINumber,
+                pu.SerialNumber
               FROM Sales s
               LEFT JOIN SaleItems si ON s.SaleID = si.SaleID
-              WHERE s.SaleID = :id";
+              LEFT JOIN ProductUnits pu ON pu.SaleID = s.SaleID AND pu.ProductID = si.ProductID
+              WHERE s.SaleID = :id AND s.Branch = :branch";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $saleId]);
+    $stmt->execute([':id' => $saleId, ':branch' => $currentBranch]);
     $sale = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if ($sale && count($sale) > 0) {
@@ -955,7 +1078,10 @@ function getSaleById($conn) {
                     'ProductName' => $row['ProductName'],
                     'Quantity' => $row['Quantity'],
                     'Price' => $row['Price'],
-                    'Total' => $row['Total']
+                    'Total' => $row['Total'],
+                    'UnitNumber' => $row['UnitNumber'] ?? null,
+                    'IMEINumber' => $row['IMEINumber'] ?? null,
+                    'SerialNumber' => $row['SerialNumber'] ?? null
                 ];
             }
         }
@@ -966,636 +1092,20 @@ function getSaleById($conn) {
     }
 }
 
-function getTodaySales($conn) {
+function getTodaySales($conn, $currentBranch) {
     $query = "SELECT 
                 ISNULL(SUM(TotalAmount), 0) AS TodaySales,
                 COUNT(*) AS TransactionCount,
                 ISNULL(SUM(AmountReceived), 0) AS TotalReceived
               FROM Sales
-              WHERE CAST(SaleDate AS DATE) = CAST(GETDATE() AS DATE)";
+              WHERE CAST(SaleDate AS DATE) = CAST(GETDATE() AS DATE)
+              AND Branch = :branch";
     
-    $stmt = $conn->query($query);
+    $stmt = $conn->prepare($query);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $result]);
-}
-
-function getSalesReport($conn) {
-    $period = $_GET['period'] ?? 'daily';
-    $startDate = $_GET['start_date'] ?? null;
-    $endDate = $_GET['end_date'] ?? null;
-    
-    if ($startDate && $endDate) {
-        $query = "SELECT 
-                    FORMAT(SaleDate, 'yyyy-MM-dd') AS Date,
-                    COUNT(*) AS TransactionCount,
-                    ISNULL(SUM(TotalAmount), 0) AS TotalSales,
-                    PaymentMethod
-                  FROM Sales
-                  WHERE SaleDate BETWEEN :start AND :end
-                  GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd'), PaymentMethod
-                  ORDER BY Date DESC";
-        $stmt = $conn->prepare($query);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
-    } else {
-        $query = "SELECT 
-                    FORMAT(SaleDate, 'yyyy-MM-dd') AS Date,
-                    COUNT(*) AS TransactionCount,
-                    ISNULL(SUM(TotalAmount), 0) AS TotalSales,
-                    ISNULL(SUM(AmountReceived), 0) AS TotalReceived
-                  FROM Sales
-                  WHERE SaleDate >= DATEADD(DAY, -30, GETDATE())
-                  GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd')
-                  ORDER BY Date DESC";
-        $stmt = $conn->query($query);
-    }
-    
-    $report = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $report]);
-}
-
-function getReceipt($conn) {
-    $receiptNo = $_GET['receipt_no'] ?? '';
-    
-    if (!$receiptNo) {
-        echo json_encode(['success' => false, 'message' => 'Receipt number required']);
-        return;
-    }
-    
-    $query = "SELECT 
-                s.SaleID, 
-                s.ReceiptNo, 
-                s.CustomerName, 
-                s.CustomerPhone, 
-                s.TotalAmount,
-                s.PaymentMethod, 
-                s.AmountReceived, 
-                s.ChangeAmount,
-                FORMAT(s.SaleDate, 'yyyy-MM-dd HH:mm:ss') AS SaleDate,
-                si.ProductCode,
-                si.ProductName, 
-                si.Quantity, 
-                si.Price, 
-                si.Total
-              FROM Sales s
-              LEFT JOIN SaleItems si ON s.SaleID = si.SaleID
-              WHERE s.ReceiptNo = :receipt";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute([':receipt' => $receiptNo]);
-    $sale = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if ($sale && count($sale) > 0) {
-        echo json_encode(['success' => true, 'data' => $sale]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Receipt not found']);
-    }
-}
-
-function updateSaleStatus($conn, $data) {
-    $saleId = $data['sale_id'] ?? 0;
-    $status = $data['status'] ?? '';
-    
-    if (!$saleId || !$status) {
-        echo json_encode(['success' => false, 'message' => 'Sale ID and status required']);
-        return;
-    }
-    
-    $validStatuses = ['completed', 'cancelled', 'refunded', 'returned'];
-    if (!in_array($status, $validStatuses)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid status']);
-        return;
-    }
-    
-    $query = "UPDATE Sales SET Status = :status WHERE SaleID = :id";
-    $stmt = $conn->prepare($query);
-    $stmt->execute([':status' => $status, ':id' => $saleId]);
-    
-    echo json_encode(['success' => true, 'message' => 'Sale status updated']);
-}
-
-// ============================================
-// CUSTOMER FUNCTIONS
-// ============================================
-
-function getCustomers($conn) {
-    $query = "SELECT 
-                CustomerID, 
-                CustomerName, 
-                Phone, 
-                Email, 
-                Address,
-                ISNULL((SELECT COUNT(*) FROM Sales WHERE CustomerPhone = c.Phone), 0) AS TotalPurchases,
-                ISNULL((SELECT SUM(TotalAmount) FROM Sales WHERE CustomerPhone = c.Phone), 0) AS TotalSpent
-              FROM Customers c
-              ORDER BY CustomerName";
-    
-    $stmt = $conn->query($query);
-    $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $customers]);
-}
-
-function getCustomerById($conn) {
-    $customerId = $_GET['id'] ?? 0;
-    
-    if (!$customerId) {
-        echo json_encode(['success' => false, 'message' => 'Customer ID required']);
-        return;
-    }
-    
-    $query = "SELECT * FROM Customers WHERE CustomerID = :id";
-    $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $customerId]);
-    $customer = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $customer]);
-}
-
-function addCustomer($conn, $data) {
-    $customerName = $data['customer_name'] ?? '';
-    $phone = $data['phone'] ?? '';
-    $email = $data['email'] ?? '';
-    $address = $data['address'] ?? '';
-    
-    if (empty($customerName)) {
-        echo json_encode(['success' => false, 'message' => 'Customer name is required']);
-        return;
-    }
-    
-    $query = "INSERT INTO Customers (CustomerName, Phone, Email, Address, CreatedAt)
-              VALUES (:name, :phone, :email, :address, GETDATE())";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute([
-        ':name' => $customerName,
-        ':phone' => $phone,
-        ':email' => $email,
-        ':address' => $address
-    ]);
-    
-    echo json_encode([
-        'success' => true, 
-        'message' => 'Customer added successfully',
-        'customer_id' => $conn->lastInsertId()
-    ]);
-}
-
-// ============================================
-// REPAIR FUNCTIONS
-// ============================================
-
-function addRepair($conn, $data, $currentUser) {
-    $customerName = $data['customer_name'] ?? '';
-    $customerPhone = $data['customer_phone'] ?? '';
-    $deviceType = $data['device_type'] ?? '';
-    $issue = $data['issue'] ?? '';
-    $estimatedCost = $data['estimated_cost'] ?? 0;
-    $notes = $data['notes'] ?? '';
-    
-    if (empty($customerName) || empty($deviceType)) {
-        echo json_encode(['success' => false, 'message' => 'Customer name and device type are required']);
-        return;
-    }
-    
-    $repairNo = 'RPR-' . date('Ymd') . '-' . rand(100, 999);
-    
-    $query = "INSERT INTO Repairs 
-              (RepairNo, CustomerName, CustomerPhone, DeviceType, Issue, Status, EstimatedCost, Notes, CreatedBy, CreatedAt)
-              VALUES 
-              (:repairNo, :customer, :phone, :device, :issue, 'pending', :cost, :notes, :user, GETDATE())";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute([
-        ':repairNo' => $repairNo,
-        ':customer' => $customerName,
-        ':phone' => $customerPhone,
-        ':device' => $deviceType,
-        ':issue' => $issue,
-        ':cost' => $estimatedCost,
-        ':notes' => $notes,
-        ':user' => $currentUser
-    ]);
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Repair request created',
-        'repair_no' => $repairNo,
-        'repair_id' => $conn->lastInsertId()
-    ]);
-}
-
-// ============================================
-// RETURNS FUNCTIONS
-// ============================================
-
-function processReturn($conn, $data, $currentUser) {
-    $transactionId = $data['transaction_id'] ?? 0;
-    $transactionType = $data['transaction_type'] ?? 'sales';
-    $reason = $data['reason'] ?? '';
-    $notes = $data['notes'] ?? '';
-    $refundAmount = $data['refund_amount'] ?? 0;
-    
-    if (!$transactionId) {
-        echo json_encode(['success' => false, 'message' => 'Transaction ID required']);
-        return;
-    }
-    
-    if (empty($reason)) {
-        echo json_encode(['success' => false, 'message' => 'Reason for return is required']);
-        return;
-    }
-    
-    $conn->beginTransaction();
-    
-    try {
-        if ($transactionType === 'sales') {
-            // Get sale details
-            $saleQuery = "SELECT ReceiptNo, CustomerName, TotalAmount, Status FROM Sales WHERE SaleID = :id";
-            $stmt = $conn->prepare($saleQuery);
-            $stmt->execute([':id' => $transactionId]);
-            $sale = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$sale) {
-                throw new Exception('Sale transaction not found');
-            }
-            
-            if ($sale['Status'] === 'returned') {
-                throw new Exception('Transaction already returned');
-            }
-            
-            // Update sale status to returned
-            $updateSale = "UPDATE Sales SET Status = 'returned', UpdatedAt = GETDATE() WHERE SaleID = :id";
-            $stmt = $conn->prepare($updateSale);
-            $stmt->execute([':id' => $transactionId]);
-            
-            // Get sale items to restore stock
-            $itemsQuery = "SELECT ProductID, Quantity FROM SaleItems WHERE SaleID = :id";
-            $stmt = $conn->prepare($itemsQuery);
-            $stmt->execute([':id' => $transactionId]);
-            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Restore product stock
-            foreach ($items as $item) {
-                $restoreStock = "UPDATE Products SET CurrentStock = CurrentStock + :qty WHERE ProductID = :id";
-                $stmt = $conn->prepare($restoreStock);
-                $stmt->execute([':qty' => $item['Quantity'], ':id' => $item['ProductID']]);
-            }
-            
-            $refundAmount = $sale['TotalAmount'];
-            $receiptNo = $sale['ReceiptNo'];
-            $customerName = $sale['CustomerName'];
-            
-        } else {
-            throw new Exception('Invalid transaction type');
-        }
-        
-        // Insert return record
-        $returnNo = 'RTRN-' . date('Ymd') . '-' . rand(1000, 9999);
-        $insertReturn = "INSERT INTO Returns 
-                        (ReturnNo, TransactionID, TransactionType, ReceiptNo, CustomerName, 
-                         Reason, RefundAmount, Status, Notes, CreatedBy, CreatedAt)
-                        VALUES 
-                        (:no, :tid, :ttype, :receipt, :customer,
-                         :reason, :refund, 'pending', :notes, :user, GETDATE())";
-        
-        $stmt = $conn->prepare($insertReturn);
-        $stmt->execute([
-            ':no' => $returnNo,
-            ':tid' => $transactionId,
-            ':ttype' => $transactionType,
-            ':receipt' => $receiptNo,
-            ':customer' => $customerName,
-            ':reason' => $reason,
-            ':refund' => $refundAmount,
-            ':notes' => $notes,
-            ':user' => $currentUser
-        ]);
-        
-        $returnId = $conn->lastInsertId();
-        
-        $conn->commit();
-        
-        echo json_encode([
-            'success' => true,
-            'message' => 'Return processed successfully',
-            'return_id' => $returnId,
-            'return_no' => $returnNo,
-            'refund_amount' => $refundAmount
-        ]);
-        
-    } catch (Exception $e) {
-        $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    } catch (PDOException $e) {
-        $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-    }
-}
-
-function approveReturn($conn, $data, $currentUser) {
-    $returnId = $data['return_id'] ?? 0;
-    $status = $data['status'] ?? 'approved';
-    
-    if (!$returnId) {
-        echo json_encode(['success' => false, 'message' => 'Return ID required']);
-        return;
-    }
-    
-    $updateQuery = "UPDATE Returns 
-                    SET Status = :status, 
-                        ApprovedBy = :user, 
-                        ApprovedAt = GETDATE(),
-                        UpdatedAt = GETDATE()
-                    WHERE ReturnID = :id";
-    
-    $stmt = $conn->prepare($updateQuery);
-    $stmt->execute([
-        ':status' => $status,
-        ':user' => $currentUser,
-        ':id' => $returnId
-    ]);
-    
-    echo json_encode(['success' => true, 'message' => 'Return ' . $status . ' successfully']);
-}
-
-function getReturns($conn) {
-    $limit = $_GET['limit'] ?? 100;
-    $status = $_GET['status'] ?? 'all';
-    
-    $statusFilter = $status !== 'all' ? "AND r.Status = :status" : "";
-    
-    $query = "SELECT TOP (:limit) 
-                r.ReturnID, r.ReturnNo, r.TransactionID, r.TransactionType,
-                r.ReceiptNo, r.CustomerName, r.Reason, r.RefundAmount,
-                r.Status, r.Notes,
-                FORMAT(r.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
-                FORMAT(r.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt,
-                r.CreatedBy, r.ApprovedBy
-              FROM Returns r
-              WHERE 1=1 $statusFilter
-              ORDER BY r.CreatedAt DESC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    if ($status !== 'all') {
-        $stmt->bindParam(':status', $status);
-    }
-    $stmt->execute();
-    $returns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $returns, 'count' => count($returns)]);
-}
-
-function getReturnById($conn) {
-    $id = $_GET['id'] ?? 0;
-    
-    if (!$id) {
-        echo json_encode(['success' => false, 'message' => 'Return ID required']);
-        return;
-    }
-    
-    $query = "SELECT 
-                r.*,
-                FORMAT(r.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
-                FORMAT(r.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt
-              FROM Returns r
-              WHERE r.ReturnID = :id";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $id]);
-    $return = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $return]);
-}
-
-function getReturnStats($conn) {
-    $query = "SELECT 
-                COUNT(*) AS TotalReturns,
-                SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingReturns,
-                SUM(CASE WHEN Status = 'approved' THEN 1 ELSE 0 END) AS ApprovedReturns,
-                SUM(CASE WHEN Status = 'rejected' THEN 1 ELSE 0 END) AS RejectedReturns,
-                ISNULL(SUM(RefundAmount), 0) AS TotalRefundAmount
-              FROM Returns";
-    
-    $stmt = $conn->query($query);
-    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $stats]);
-}
-
-function updateReturnStatus($conn, $data, $currentUser) {
-    $returnId = $data['return_id'] ?? 0;
-    $status = $data['status'] ?? '';
-    
-    if (!$returnId || !$status) {
-        echo json_encode(['success' => false, 'message' => 'Return ID and status required']);
-        return;
-    }
-    
-    $validStatuses = ['pending', 'approved', 'rejected', 'completed'];
-    if (!in_array($status, $validStatuses)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid status']);
-        return;
-    }
-    
-    $updateQuery = "UPDATE Returns SET Status = :status, UpdatedAt = GETDATE() WHERE ReturnID = :id";
-    $stmt = $conn->prepare($updateQuery);
-    $stmt->execute([':status' => $status, ':id' => $returnId]);
-    
-    echo json_encode(['success' => true, 'message' => 'Return status updated']);
-}
-
-// ============================================
-// WARRANTY FUNCTIONS
-// ============================================
-
-function submitWarranty($conn, $data, $currentUser) {
-    $transactionId = $data['transaction_id'] ?? 0;
-    $transactionType = $data['transaction_type'] ?? 'sales';
-    $issue = $data['issue'] ?? '';
-    $warrantyType = $data['warranty_type'] ?? 'Repair';
-    $notes = $data['notes'] ?? '';
-    
-    if (!$transactionId) {
-        echo json_encode(['success' => false, 'message' => 'Transaction ID required']);
-        return;
-    }
-    
-    if (empty($issue)) {
-        echo json_encode(['success' => false, 'message' => 'Issue description is required']);
-        return;
-    }
-    
-    $conn->beginTransaction();
-    
-    try {
-        if ($transactionType === 'sales') {
-            // Get sale details
-            $saleQuery = "SELECT ReceiptNo, CustomerName, SaleDate FROM Sales WHERE SaleID = :id";
-            $stmt = $conn->prepare($saleQuery);
-            $stmt->execute([':id' => $transactionId]);
-            $sale = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$sale) {
-                throw new Exception('Sale transaction not found');
-            }
-            
-            $receiptNo = $sale['ReceiptNo'];
-            $customerName = $sale['CustomerName'];
-            $purchaseDate = $sale['SaleDate'];
-        } else {
-            throw new Exception('Invalid transaction type');
-        }
-        
-        // Calculate warranty expiry (1 year from purchase date)
-        $expiryDate = date('Y-m-d', strtotime($purchaseDate . ' + 1 year'));
-        
-        // Insert warranty claim
-        $warrantyNo = 'WRNT-' . date('Ymd') . '-' . rand(1000, 9999);
-        $insertWarranty = "INSERT INTO WarrantyClaims 
-                          (WarrantyNo, TransactionID, TransactionType, ReceiptNo, CustomerName,
-                           Issue, WarrantyType, Status, ExpiryDate, Notes, CreatedBy, CreatedAt)
-                          VALUES 
-                          (:no, :tid, :ttype, :receipt, :customer,
-                           :issue, :wtype, 'pending', :expiry, :notes, :user, GETDATE())";
-        
-        $stmt = $conn->prepare($insertWarranty);
-        $stmt->execute([
-            ':no' => $warrantyNo,
-            ':tid' => $transactionId,
-            ':ttype' => $transactionType,
-            ':receipt' => $receiptNo,
-            ':customer' => $customerName,
-            ':issue' => $issue,
-            ':wtype' => $warrantyType,
-            ':expiry' => $expiryDate,
-            ':notes' => $notes,
-            ':user' => $currentUser
-        ]);
-        
-        $warrantyId = $conn->lastInsertId();
-        
-        $conn->commit();
-        
-        echo json_encode([
-            'success' => true,
-            'message' => 'Warranty claim submitted successfully',
-            'warranty_id' => $warrantyId,
-            'warranty_no' => $warrantyNo,
-            'expiry_date' => $expiryDate
-        ]);
-        
-    } catch (Exception $e) {
-        $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    } catch (PDOException $e) {
-        $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-    }
-}
-
-function approveWarranty($conn, $data, $currentUser) {
-    $warrantyId = $data['warranty_id'] ?? 0;
-    $status = $data['status'] ?? 'approved';
-    $resolution = $data['resolution'] ?? '';
-    
-    if (!$warrantyId) {
-        echo json_encode(['success' => false, 'message' => 'Warranty ID required']);
-        return;
-    }
-    
-    $updateQuery = "UPDATE WarrantyClaims 
-                    SET Status = :status, 
-                        Resolution = :resolution,
-                        ApprovedBy = :user, 
-                        ApprovedAt = GETDATE(),
-                        UpdatedAt = GETDATE()
-                    WHERE WarrantyID = :id";
-    
-    $stmt = $conn->prepare($updateQuery);
-    $stmt->execute([
-        ':status' => $status,
-        ':resolution' => $resolution,
-        ':user' => $currentUser,
-        ':id' => $warrantyId
-    ]);
-    
-    echo json_encode(['success' => true, 'message' => 'Warranty claim ' . $status . ' successfully']);
-}
-
-function getWarrantyClaims($conn) {
-    $limit = $_GET['limit'] ?? 100;
-    $status = $_GET['status'] ?? 'all';
-    
-    $statusFilter = $status !== 'all' ? "AND w.Status = :status" : "";
-    
-    $query = "SELECT TOP (:limit) 
-                w.WarrantyID, w.WarrantyNo, w.TransactionID, w.TransactionType,
-                w.ReceiptNo, w.CustomerName, w.Issue, w.WarrantyType,
-                w.Status, w.Resolution, w.Notes,
-                FORMAT(w.ExpiryDate, 'yyyy-MM-dd') AS ExpiryDate,
-                FORMAT(w.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
-                FORMAT(w.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt,
-                w.CreatedBy, w.ApprovedBy
-              FROM WarrantyClaims w
-              WHERE 1=1 $statusFilter
-              ORDER BY w.CreatedAt DESC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    if ($status !== 'all') {
-        $stmt->bindParam(':status', $status);
-    }
-    $stmt->execute();
-    $claims = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $claims, 'count' => count($claims)]);
-}
-
-function getWarrantyById($conn) {
-    $id = $_GET['id'] ?? 0;
-    
-    if (!$id) {
-        echo json_encode(['success' => false, 'message' => 'Warranty ID required']);
-        return;
-    }
-    
-    $query = "SELECT 
-                w.*,
-                FORMAT(w.ExpiryDate, 'yyyy-MM-dd') AS ExpiryDate,
-                FORMAT(w.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
-                FORMAT(w.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt
-              FROM WarrantyClaims w
-              WHERE w.WarrantyID = :id";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $id]);
-    $claim = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    echo json_encode(['success' => true, 'data' => $claim]);
-}
-
-function updateWarrantyStatus($conn, $data, $currentUser) {
-    $warrantyId = $data['warranty_id'] ?? 0;
-    $status = $data['status'] ?? '';
-    
-    if (!$warrantyId || !$status) {
-        echo json_encode(['success' => false, 'message' => 'Warranty ID and status required']);
-        return;
-    }
-    
-    $validStatuses = ['pending', 'approved', 'rejected', 'completed'];
-    if (!in_array($status, $validStatuses)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid status']);
-        return;
-    }
-    
-    $updateQuery = "UPDATE WarrantyClaims SET Status = :status, UpdatedAt = GETDATE() WHERE WarrantyID = :id";
-    $stmt = $conn->prepare($updateQuery);
-    $stmt->execute([':status' => $status, ':id' => $warrantyId]);
-    
-    echo json_encode(['success' => true, 'message' => 'Warranty status updated']);
 }
 ?>

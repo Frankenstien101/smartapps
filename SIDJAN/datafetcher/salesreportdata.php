@@ -1,9 +1,11 @@
 <?php
-// api_reports.php - Backend API for Sales Reports
+// api_reports.php - Backend API for Sales Reports with Branch Support
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+include '../DB/dbcon.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -14,18 +16,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-try {
-    $conn = new PDO(
-        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-        "sa",
-        'bspi.@dm1n'
-    );
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-    exit();
-}
+//try {
+//    $conn = new PDO(
+//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
+//        "sa",
+//        'bspi.@dm1n'
+//    );
+//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+//} catch (PDOException $e) {
+//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
+//    exit();
+//}
+
+// Start session for user tracking
+session_start();
+$currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch';
+$userRole = $_SESSION['role'] ?? 'staff';
 
 // Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
@@ -55,36 +62,38 @@ try {
 // ============================================
 
 function handleGetRequest($conn, $action) {
+    global $currentBranch, $userRole;
+    
     switch ($action) {
         case 'getSalesReport':
-            getSalesReport($conn);
+            getSalesReport($conn, $currentBranch, $userRole);
             break;
         case 'getProductSalesReport':
-            getProductSalesReport($conn);
+            getProductSalesReport($conn, $currentBranch, $userRole);
             break;
         case 'getDailySales':
-            getDailySales($conn);
+            getDailySales($conn, $currentBranch);
             break;
         case 'getMonthlySales':
-            getMonthlySales($conn);
+            getMonthlySales($conn, $currentBranch);
             break;
         case 'getYearlySales':
-            getYearlySales($conn);
+            getYearlySales($conn, $currentBranch);
             break;
         case 'getTopProducts':
-            getTopProducts($conn);
+            getTopProducts($conn, $currentBranch);
             break;
         case 'getPaymentMethodReport':
-            getPaymentMethodReport($conn);
+            getPaymentMethodReport($conn, $currentBranch);
             break;
         case 'getProfitReport':
-            getProfitReport($conn);
+            getProfitReport($conn, $currentBranch);
             break;
         case 'getTaxReport':
-            getTaxReport($conn);
+            getTaxReport($conn, $currentBranch);
             break;
         case 'exportReport':
-            exportReport($conn);
+            exportReport($conn, $currentBranch);
             break;
         default:
             echo json_encode(['error' => 'Invalid action']);
@@ -104,15 +113,29 @@ function handlePostRequest($conn, $action) {
 }
 
 // ============================================
-// REPORT FUNCTIONS
+// REPORT FUNCTIONS WITH BRANCH
 // ============================================
 
-function getSalesReport($conn) {
+function getSalesReport($conn, $currentBranch, $userRole) {
     $period = $_GET['period'] ?? 'daily';
     $startDate = $_GET['start_date'] ?? null;
     $endDate = $_GET['end_date'] ?? null;
     
+    // Branch filter
+    $branchFilter = "";
+    $params = [];
+    
+    if ($userRole !== 'admin') {
+        $branchFilter = "AND Branch = :branch";
+        $params[':branch'] = $currentBranch;
+    }
+    
     if ($startDate && $endDate) {
+        // Add one day to end date to include the full day
+        $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
+        $params[':start'] = $startDate;
+        $params[':end'] = $endDatePlus;
+        
         $query = "SELECT 
                     FORMAT(SaleDate, 'yyyy-MM-dd') AS Date,
                     COUNT(*) AS TransactionCount,
@@ -121,12 +144,17 @@ function getSalesReport($conn) {
                     ISNULL(AVG(TotalAmount), 0) AS AverageTransaction,
                     PaymentMethod
                   FROM Sales
-                  WHERE SaleDate BETWEEN :start AND :end
-                  AND Status != 'cancelled'
+                  WHERE SaleDate >= :start AND SaleDate < :end
+                  AND (Status != 'cancelled' OR Status IS NULL)
+                  $branchFilter
                   GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd'), PaymentMethod
-                  ORDER BY Date DESC";
+                  ORDER BY MIN(SaleDate) DESC";
+        
         $stmt = $conn->prepare($query);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
     } else {
         if ($period === 'daily') {
             $query = "SELECT 
@@ -136,10 +164,16 @@ function getSalesReport($conn) {
                         ISNULL(SUM(AmountReceived), 0) AS TotalReceived
                       FROM Sales
                       WHERE SaleDate >= DATEADD(DAY, -30, GETDATE())
-                      AND Status != 'cancelled'
+                      AND (Status != 'cancelled' OR Status IS NULL)
+                      $branchFilter
                       GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd')
-                      ORDER BY Date DESC";
-            $stmt = $conn->query($query);
+                      ORDER BY MIN(SaleDate) DESC";
+            
+            $stmt = $conn->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
         } elseif ($period === 'weekly') {
             $query = "SELECT 
                         DATEPART(WEEK, SaleDate) AS WeekNumber,
@@ -149,10 +183,16 @@ function getSalesReport($conn) {
                         ISNULL(SUM(TotalAmount), 0) AS TotalSales
                       FROM Sales
                       WHERE SaleDate >= DATEADD(MONTH, -3, GETDATE())
-                      AND Status != 'cancelled'
+                      AND (Status != 'cancelled' OR Status IS NULL)
+                      $branchFilter
                       GROUP BY DATEPART(WEEK, SaleDate)
-                      ORDER BY WeekNumber DESC";
-            $stmt = $conn->query($query);
+                      ORDER BY MIN(SaleDate) DESC";
+            
+            $stmt = $conn->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
         } elseif ($period === 'monthly') {
             $query = "SELECT 
                         FORMAT(SaleDate, 'yyyy-MM') AS Month,
@@ -160,36 +200,90 @@ function getSalesReport($conn) {
                         ISNULL(SUM(TotalAmount), 0) AS TotalSales
                       FROM Sales
                       WHERE SaleDate >= DATEADD(YEAR, -1, GETDATE())
-                      AND Status != 'cancelled'
+                      AND (Status != 'cancelled' OR Status IS NULL)
+                      $branchFilter
                       GROUP BY FORMAT(SaleDate, 'yyyy-MM')
-                      ORDER BY Month DESC";
-            $stmt = $conn->query($query);
+                      ORDER BY MIN(SaleDate) DESC";
+            
+            $stmt = $conn->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
         } else {
             $query = "SELECT 
                         FORMAT(SaleDate, 'yyyy') AS Year,
                         COUNT(*) AS TransactionCount,
                         ISNULL(SUM(TotalAmount), 0) AS TotalSales
                       FROM Sales
-                      WHERE Status != 'cancelled'
+                      WHERE (Status != 'cancelled' OR Status IS NULL)
+                      $branchFilter
                       GROUP BY FORMAT(SaleDate, 'yyyy')
-                      ORDER BY Year DESC";
-            $stmt = $conn->query($query);
+                      ORDER BY MIN(SaleDate) DESC";
+            
+            $stmt = $conn->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
         }
     }
     
     $report = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get summary
-    $summaryQuery = "SELECT 
-                        ISNULL(SUM(TotalAmount), 0) AS TotalSales,
-                        COUNT(*) AS TotalTransactions,
-                        ISNULL(AVG(TotalAmount), 0) AS AverageSale,
-                        ISNULL(MAX(TotalAmount), 0) AS HighestSale,
-                        ISNULL(MIN(TotalAmount), 0) AS LowestSale
-                      FROM Sales
-                      WHERE Status != 'cancelled'";
+    if ($startDate && $endDate) {
+        $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
+        $summaryParams = [':start' => $startDate, ':end' => $endDatePlus];
+        if ($userRole !== 'admin') {
+            $summaryParams[':branch'] = $currentBranch;
+            $branchFilter = "AND Branch = :branch";
+        } else {
+            $branchFilter = "";
+        }
+        
+        $summaryQuery = "SELECT 
+                            ISNULL(SUM(TotalAmount), 0) AS TotalSales,
+                            COUNT(*) AS TotalTransactions,
+                            ISNULL(AVG(TotalAmount), 0) AS AverageSale,
+                            ISNULL(MAX(TotalAmount), 0) AS HighestSale,
+                            ISNULL(MIN(TotalAmount), 0) AS LowestSale
+                          FROM Sales
+                          WHERE SaleDate >= :start AND SaleDate < :end
+                          AND (Status != 'cancelled' OR Status IS NULL)
+                          $branchFilter";
+        
+        $stmt = $conn->prepare($summaryQuery);
+        foreach ($summaryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+    } else {
+        $summaryParams = [];
+        if ($userRole !== 'admin') {
+            $summaryParams[':branch'] = $currentBranch;
+            $branchFilter = "AND Branch = :branch";
+        } else {
+            $branchFilter = "";
+        }
+        
+        $summaryQuery = "SELECT 
+                            ISNULL(SUM(TotalAmount), 0) AS TotalSales,
+                            COUNT(*) AS TotalTransactions,
+                            ISNULL(AVG(TotalAmount), 0) AS AverageSale,
+                            ISNULL(MAX(TotalAmount), 0) AS HighestSale,
+                            ISNULL(MIN(TotalAmount), 0) AS LowestSale
+                          FROM Sales
+                          WHERE (Status != 'cancelled' OR Status IS NULL)
+                          $branchFilter";
+        
+        $stmt = $conn->prepare($summaryQuery);
+        foreach ($summaryParams as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+    }
     
-    $stmt = $conn->query($summaryQuery);
     $summary = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode([
@@ -199,22 +293,91 @@ function getSalesReport($conn) {
     ]);
 }
 
-function getDailySales($conn) {
-    $days = $_GET['days'] ?? 30;
+function getProductSalesReport($conn, $currentBranch, $userRole) {
+    $startDate = $_GET['start_date'] ?? date('Y-m-01');
+    $endDate = $_GET['end_date'] ?? date('Y-m-t');
+    $limit = intval($_GET['limit'] ?? 50);
     
-    $query = "SELECT TOP (:days)
+    // Add one day to end date to include full day
+    $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
+    
+    // Branch filter
+    $branchFilter = "";
+    $params = [':start' => $startDate, ':end' => $endDatePlus];
+    
+    if ($userRole !== 'admin') {
+        $branchFilter = "AND s.Branch = :branch";
+        $params[':branch'] = $currentBranch;
+    }
+    
+    $query = "SELECT TOP $limit
+                si.ProductCode,
+                si.ProductName,
+                SUM(si.Quantity) AS TotalQuantity,
+                COUNT(DISTINCT si.SaleID) AS NumberOfSales,
+                ISNULL(AVG(si.Price), 0) AS AveragePrice,
+                ISNULL(SUM(si.Total), 0) AS TotalRevenue
+              FROM SaleItems si
+              INNER JOIN Sales s ON si.SaleID = s.SaleID
+              WHERE s.SaleDate >= :start AND s.SaleDate < :end
+              AND (s.Status != 'cancelled' OR s.Status IS NULL)
+              $branchFilter
+              GROUP BY si.ProductCode, si.ProductName
+              ORDER BY SUM(si.Total) DESC";
+    
+    $stmt = $conn->prepare($query);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get total revenue
+    $totalParams = [':start' => $startDate, ':end' => $endDatePlus];
+    if ($userRole !== 'admin') {
+        $totalParams[':branch'] = $currentBranch;
+        $branchFilter = "AND Branch = :branch";
+    } else {
+        $branchFilter = "";
+    }
+    
+    $totalQuery = "SELECT ISNULL(SUM(TotalAmount), 0) AS TotalRevenue
+                   FROM Sales
+                   WHERE SaleDate >= :start AND SaleDate < :end
+                   AND (Status != 'cancelled' OR Status IS NULL)
+                   $branchFilter";
+    
+    $stmt = $conn->prepare($totalQuery);
+    foreach ($totalParams as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    $total = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    echo json_encode([
+        'success' => true,
+        'data' => $products,
+        'total_revenue' => $total['TotalRevenue'] ?? 0
+    ]);
+}
+
+function getDailySales($conn, $currentBranch) {
+    $days = intval($_GET['days'] ?? 30);
+    
+    $query = "SELECT TOP $days
                 FORMAT(SaleDate, 'yyyy-MM-dd') AS Date,
                 DATENAME(dw, SaleDate) AS DayName,
                 COUNT(*) AS TransactionCount,
                 ISNULL(SUM(TotalAmount), 0) AS TotalSales,
                 ISNULL(SUM(AmountReceived), 0) AS TotalReceived
               FROM Sales
-              WHERE Status != 'cancelled'
+              WHERE (Status != 'cancelled' OR Status IS NULL)
+              AND Branch = :branch
               GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd'), DATENAME(dw, SaleDate)
-              ORDER BY SaleDate DESC";
+              ORDER BY MAX(SaleDate) DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':days', $days, PDO::PARAM_INT);
+    $stmt->bindParam(':branch', $currentBranch);
     $stmt->execute();
     $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -223,9 +386,12 @@ function getDailySales($conn) {
                     ISNULL(SUM(CASE WHEN SaleDate >= DATEADD(DAY, -7, GETDATE()) THEN TotalAmount ELSE 0 END), 0) AS ThisWeek,
                     ISNULL(SUM(CASE WHEN SaleDate BETWEEN DATEADD(DAY, -14, GETDATE()) AND DATEADD(DAY, -8, GETDATE()) THEN TotalAmount ELSE 0 END), 0) AS LastWeek
                   FROM Sales
-                  WHERE Status != 'cancelled'";
+                  WHERE (Status != 'cancelled' OR Status IS NULL)
+                  AND Branch = :branch";
     
-    $stmt = $conn->query($trendQuery);
+    $stmt = $conn->prepare($trendQuery);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $trend = $stmt->fetch(PDO::FETCH_ASSOC);
     
     $percentageChange = 0;
@@ -244,22 +410,23 @@ function getDailySales($conn) {
     ]);
 }
 
-function getMonthlySales($conn) {
-    $months = $_GET['months'] ?? 12;
+function getMonthlySales($conn, $currentBranch) {
+    $months = intval($_GET['months'] ?? 12);
     
-    $query = "SELECT TOP (:months)
+    $query = "SELECT TOP $months
                 FORMAT(SaleDate, 'yyyy-MM') AS Month,
                 DATENAME(month, SaleDate) AS MonthName,
                 YEAR(SaleDate) AS Year,
                 COUNT(*) AS TransactionCount,
                 ISNULL(SUM(TotalAmount), 0) AS TotalSales
               FROM Sales
-              WHERE Status != 'cancelled'
+              WHERE (Status != 'cancelled' OR Status IS NULL)
+              AND Branch = :branch
               GROUP BY FORMAT(SaleDate, 'yyyy-MM'), DATENAME(month, SaleDate), YEAR(SaleDate)
-              ORDER BY Year DESC, MONTH(SaleDate) DESC";
+              ORDER BY MAX(SaleDate) DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':months', $months, PDO::PARAM_INT);
+    $stmt->bindParam(':branch', $currentBranch);
     $stmt->execute();
     $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -272,11 +439,15 @@ function getMonthlySales($conn) {
                     ISNULL(SUM(TotalAmount), 0) AS TotalSales
                   FROM Sales
                   WHERE YEAR(SaleDate) IN (:current, :last)
-                  AND Status != 'cancelled'
+                  AND (Status != 'cancelled' OR Status IS NULL)
+                  AND Branch = :branch
                   GROUP BY YEAR(SaleDate)";
     
     $stmt = $conn->prepare($yearQuery);
-    $stmt->execute([':current' => $currentYear, ':last' => $lastYear]);
+    $stmt->bindParam(':current', $currentYear);
+    $stmt->bindParam(':last', $lastYear);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $yearly = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode([
@@ -286,67 +457,29 @@ function getMonthlySales($conn) {
     ]);
 }
 
-function getYearlySales($conn) {
+function getYearlySales($conn, $currentBranch) {
     $query = "SELECT 
                 YEAR(SaleDate) AS Year,
                 COUNT(*) AS TransactionCount,
                 ISNULL(SUM(TotalAmount), 0) AS TotalSales,
                 ISNULL(AVG(TotalAmount), 0) AS AverageSale
               FROM Sales
-              WHERE Status != 'cancelled'
+              WHERE (Status != 'cancelled' OR Status IS NULL)
+              AND Branch = :branch
               GROUP BY YEAR(SaleDate)
-              ORDER BY Year DESC";
+              ORDER BY YEAR(SaleDate) DESC";
     
-    $stmt = $conn->query($query);
+    $stmt = $conn->prepare($query);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $sales]);
 }
 
-function getProductSalesReport($conn) {
-    $startDate = $_GET['start_date'] ?? date('Y-m-01');
-    $endDate = $_GET['end_date'] ?? date('Y-m-t');
-    $limit = $_GET['limit'] ?? 50;
-    
-    $query = "SELECT TOP (:limit)
-                si.ProductCode,
-                si.ProductName,
-                SUM(si.Quantity) AS TotalQuantity,
-                COUNT(DISTINCT si.SaleID) AS NumberOfSales,
-                ISNULL(AVG(si.Price), 0) AS AveragePrice,
-                ISNULL(SUM(si.Total), 0) AS TotalRevenue
-              FROM SaleItems si
-              INNER JOIN Sales s ON si.SaleID = s.SaleID
-              WHERE s.SaleDate BETWEEN :start AND :end
-              AND s.Status != 'cancelled'
-              GROUP BY si.ProductCode, si.ProductName
-              ORDER BY TotalRevenue DESC";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Get total revenue
-    $totalQuery = "SELECT ISNULL(SUM(TotalAmount), 0) AS TotalRevenue
-                   FROM Sales
-                   WHERE SaleDate BETWEEN :start AND :end
-                   AND Status != 'cancelled'";
-    
-    $stmt = $conn->prepare($totalQuery);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
-    $total = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    echo json_encode([
-        'success' => true,
-        'data' => $products,
-        'total_revenue' => $total['TotalRevenue'] ?? 0
-    ]);
-}
-
-function getTopProducts($conn) {
-    $period = $_GET['period'] ?? 'month'; // week, month, year, all
-    $limit = $_GET['limit'] ?? 10;
+function getTopProducts($conn, $currentBranch) {
+    $period = $_GET['period'] ?? 'month';
+    $limit = intval($_GET['limit'] ?? 10);
     
     switch ($period) {
         case 'week':
@@ -362,7 +495,7 @@ function getTopProducts($conn) {
             $dateCondition = "1=1";
     }
     
-    $query = "SELECT TOP (:limit)
+    $query = "SELECT TOP $limit
                 si.ProductCode,
                 si.ProductName,
                 SUM(si.Quantity) AS TotalSold,
@@ -371,93 +504,221 @@ function getTopProducts($conn) {
               FROM SaleItems si
               INNER JOIN Sales s ON si.SaleID = s.SaleID
               WHERE $dateCondition
-              AND s.Status != 'cancelled'
+              AND (s.Status != 'cancelled' OR s.Status IS NULL)
+              AND s.Branch = :branch
               GROUP BY si.ProductCode, si.ProductName
-              ORDER BY Revenue DESC";
+              ORDER BY SUM(si.Total) DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindParam(':branch', $currentBranch);
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $products]);
 }
 
-function getPaymentMethodReport($conn) {
+function getPaymentMethodReport($conn, $currentBranch) {
     $startDate = $_GET['start_date'] ?? date('Y-m-01');
     $endDate = $_GET['end_date'] ?? date('Y-m-t');
     
+    // Add one day to end date to include full day
+    $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
+    
+    // Get payment method breakdown
     $query = "SELECT 
-                PaymentMethod,
+                ISNULL(PaymentMethod, 'other') AS PaymentMethod,
                 COUNT(*) AS TransactionCount,
                 ISNULL(SUM(TotalAmount), 0) AS TotalAmount,
-                ISNULL(AVG(TotalAmount), 0) AS AverageAmount,
-                (ISNULL(SUM(TotalAmount), 0) * 100.0 / NULLIF((SELECT SUM(TotalAmount) FROM Sales WHERE SaleDate BETWEEN :start AND :end AND Status != 'cancelled'), 0)) AS Percentage
+                ISNULL(AVG(TotalAmount), 0) AS AverageAmount
               FROM Sales
-              WHERE SaleDate BETWEEN :start AND :end
-              AND Status != 'cancelled'
+              WHERE SaleDate >= :start AND SaleDate < :end
+              AND (Status != 'cancelled' OR Status IS NULL)
+              AND Branch = :branch
               GROUP BY PaymentMethod
-              ORDER BY TotalAmount DESC";
+              ORDER BY SUM(TotalAmount) DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $methods = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    echo json_encode(['success' => true, 'data' => $methods]);
-}
-
-function getProfitReport($conn) {
-    $startDate = $_GET['start_date'] ?? date('Y-m-01');
-    $endDate = $_GET['end_date'] ?? date('Y-m-t');
+    // Calculate total sales across all payment methods
+    $totalSalesQuery = "SELECT ISNULL(SUM(TotalAmount), 0) AS TotalSales
+                        FROM Sales
+                        WHERE SaleDate >= :start AND SaleDate < :end
+                        AND (Status != 'cancelled' OR Status IS NULL)
+                        AND Branch = :branch";
+    $stmt = $conn->prepare($totalSalesQuery);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
+    $totalResult = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalSales = floatval($totalResult['TotalSales'] ?? 0);
     
-    // Get sales revenue
-    $salesQuery = "SELECT ISNULL(SUM(TotalAmount), 0) AS TotalRevenue
-                   FROM Sales
-                   WHERE SaleDate BETWEEN :start AND :end
-                   AND Status != 'cancelled'";
-    $stmt = $conn->prepare($salesQuery);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
-    $sales = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Calculate total transactions
+    $totalTransactionsQuery = "SELECT COUNT(*) AS TotalTransactions
+                               FROM Sales
+                               WHERE SaleDate >= :start AND SaleDate < :end
+                               AND (Status != 'cancelled' OR Status IS NULL)
+                               AND Branch = :branch";
+    $stmt = $conn->prepare($totalTransactionsQuery);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
+    $totalTransResult = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalTransactions = intval($totalTransResult['TotalTransactions'] ?? 0);
     
-    // Get cost of goods sold from products table
-    $cogsQuery = "SELECT 
-                    si.ProductID,
-                    si.ProductName,
-                    SUM(si.Quantity) AS QuantitySold,
-                    AVG(p.CostPrice) AS AvgCost,
-                    SUM(si.Quantity) * AVG(p.CostPrice) AS TotalCost
-                  FROM SaleItems si
-                  INNER JOIN Sales s ON si.SaleID = s.SaleID
-                  LEFT JOIN Products p ON si.ProductID = p.ProductID
-                  WHERE s.SaleDate BETWEEN :start AND :end
-                  AND s.Status != 'cancelled'
-                  GROUP BY si.ProductID, si.ProductName
-                  ORDER BY TotalCost DESC";
-    
-    $stmt = $conn->prepare($cogsQuery);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
-    $cogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    $totalCost = array_sum(array_column($cogs, 'TotalCost'));
-    $totalRevenue = $sales['TotalRevenue'];
-    $grossProfit = $totalRevenue - $totalCost;
-    $profitMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
+    // Calculate percentage and ensure numeric values
+    foreach ($methods as &$method) {
+        $method['TotalAmount'] = floatval($method['TotalAmount']);
+        $method['AverageAmount'] = floatval($method['AverageAmount']);
+        $method['TransactionCount'] = intval($method['TransactionCount']);
+        
+        if ($totalSales > 0) {
+            $method['Percentage'] = round(($method['TotalAmount'] / $totalSales) * 100, 2);
+        } else {
+            $method['Percentage'] = 0;
+        }
+    }
     
     echo json_encode([
         'success' => true,
-        'data' => [
-            'total_revenue' => $totalRevenue,
-            'total_cost' => $totalCost,
-            'gross_profit' => $grossProfit,
-            'profit_margin' => round($profitMargin, 2),
-            'breakdown' => $cogs
+        'data' => $methods,
+        'summary' => [
+            'total_sales' => round($totalSales, 2),
+            'total_transactions' => $totalTransactions,
+            'average_transaction' => $totalTransactions > 0 ? round($totalSales / $totalTransactions, 2) : 0
         ]
     ]);
 }
 
-function getTaxReport($conn) {
+function getProfitReport($conn, $currentBranch) {
     $startDate = $_GET['start_date'] ?? date('Y-m-01');
     $endDate = $_GET['end_date'] ?? date('Y-m-t');
+    
+    // Add one day to end date to include full day
+    $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
+    
+    // Check if Products table has CostPrice column
+    $checkColumnQuery = "SELECT COLUMN_NAME 
+                         FROM INFORMATION_SCHEMA.COLUMNS 
+                         WHERE TABLE_NAME = 'Products' AND COLUMN_NAME = 'CostPrice'";
+    $stmt = $conn->query($checkColumnQuery);
+    $hasCostPrice = $stmt->fetch(PDO::FETCH_ASSOC) ? true : false;
+    
+    // Get sales revenue
+    $salesQuery = "SELECT ISNULL(SUM(TotalAmount), 0) AS TotalRevenue
+                   FROM Sales
+                   WHERE SaleDate >= :start AND SaleDate < :end
+                   AND (Status != 'cancelled' OR Status IS NULL)
+                   AND Branch = :branch";
+    $stmt = $conn->prepare($salesQuery);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
+    $sales = $stmt->fetch(PDO::FETCH_ASSOC);
+    $totalRevenue = floatval($sales['TotalRevenue'] ?? 0);
+    
+    // Get cost of goods sold
+    if ($hasCostPrice) {
+        $cogsQuery = "SELECT 
+                        si.ProductID,
+                        si.ProductName,
+                        SUM(si.Quantity) AS QuantitySold,
+                        ISNULL(AVG(p.CostPrice), 0) AS AvgCost,
+                        SUM(si.Quantity) * ISNULL(AVG(p.CostPrice), 0) AS TotalCost,
+                        SUM(si.Total) AS ItemRevenue
+                      FROM SaleItems si
+                      INNER JOIN Sales s ON si.SaleID = s.SaleID
+                      LEFT JOIN Products p ON si.ProductID = p.ProductID
+                      WHERE s.SaleDate >= :start AND s.SaleDate < :end
+                      AND (s.Status != 'cancelled' OR s.Status IS NULL)
+                      AND s.Branch = :branch
+                      GROUP BY si.ProductID, si.ProductName
+                      ORDER BY SUM(si.Quantity) * ISNULL(AVG(p.CostPrice), 0) DESC";
+    } else {
+        $cogsQuery = "SELECT 
+                        si.ProductID,
+                        si.ProductName,
+                        SUM(si.Quantity) AS QuantitySold,
+                        ISNULL(AVG(si.Price) * 0.7, 0) AS AvgCost,
+                        SUM(si.Quantity) * (ISNULL(AVG(si.Price), 0) * 0.7) AS TotalCost,
+                        SUM(si.Total) AS ItemRevenue
+                      FROM SaleItems si
+                      INNER JOIN Sales s ON si.SaleID = s.SaleID
+                      WHERE s.SaleDate >= :start AND s.SaleDate < :end
+                      AND (s.Status != 'cancelled' OR s.Status IS NULL)
+                      AND s.Branch = :branch
+                      GROUP BY si.ProductID, si.ProductName
+                      ORDER BY SUM(si.Quantity) * (ISNULL(AVG(si.Price), 0) * 0.7) DESC";
+    }
+    
+    $stmt = $conn->prepare($cogsQuery);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
+    $cogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $totalCost = 0;
+    $itemRevenue = 0;
+    $breakdown = [];
+    
+    foreach ($cogs as $item) {
+        $cost = floatval($item['TotalCost'] ?? 0);
+        $revenue = floatval($item['ItemRevenue'] ?? 0);
+        $totalCost += $cost;
+        $itemRevenue += $revenue;
+        
+        $profit = $revenue - $cost;
+        $margin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
+        
+        $breakdown[] = [
+            'ProductID' => $item['ProductID'],
+            'ProductName' => $item['ProductName'],
+            'QuantitySold' => intval($item['QuantitySold'] ?? 0),
+            'TotalRevenue' => $revenue,
+            'TotalCost' => $cost,
+            'Profit' => $profit,
+            'Margin' => round($margin, 2)
+        ];
+    }
+    
+    // Use the higher of the two revenue values
+    $finalRevenue = max($totalRevenue, $itemRevenue);
+    
+    $grossProfit = $finalRevenue - $totalCost;
+    $profitMargin = $finalRevenue > 0 ? ($grossProfit / $finalRevenue) * 100 : 0;
+    
+    if ($finalRevenue == 0 && $totalCost == 0) {
+        $grossProfit = 0;
+        $profitMargin = 0;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'total_revenue' => round($finalRevenue, 2),
+            'total_cost' => round($totalCost, 2),
+            'gross_profit' => round($grossProfit, 2),
+            'profit_margin' => round($profitMargin, 2),
+            'breakdown' => $breakdown,
+            'has_cost_data' => $hasCostPrice
+        ]
+    ]);
+}
+
+function getTaxReport($conn, $currentBranch) {
+    $startDate = $_GET['start_date'] ?? date('Y-m-01');
+    $endDate = $_GET['end_date'] ?? date('Y-m-t');
+    
+    // Add one day to end date to include full day
+    $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
     
     $query = "SELECT 
                 FORMAT(SaleDate, 'yyyy-MM-dd') AS Date,
@@ -465,17 +726,25 @@ function getTaxReport($conn) {
                 ISNULL(SUM(TotalAmount), 0) AS TotalSales,
                 ISNULL(SUM(TotalAmount) * 0.12 / 1.12, 0) AS VatAmount
               FROM Sales
-              WHERE SaleDate BETWEEN :start AND :end
-              AND Status != 'cancelled'
+              WHERE SaleDate >= :start AND SaleDate < :end
+              AND (Status != 'cancelled' OR Status IS NULL)
+              AND Branch = :branch
               GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd')
-              ORDER BY Date DESC";
+              ORDER BY MIN(SaleDate) DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $tax = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $totalVat = array_sum(array_column($tax, 'VatAmount'));
-    $totalSales = array_sum(array_column($tax, 'TotalSales'));
+    $totalVat = 0;
+    $totalSales = 0;
+    foreach ($tax as $row) {
+        $totalVat += $row['VatAmount'];
+        $totalSales += $row['TotalSales'];
+    }
     
     echo json_encode([
         'success' => true,
@@ -489,9 +758,14 @@ function getTaxReport($conn) {
 }
 
 function generateCustomReport($conn, $data) {
+    global $currentBranch;
+    
     $startDate = $data['start_date'] ?? date('Y-m-01');
     $endDate = $data['end_date'] ?? date('Y-m-t');
-    $groupBy = $data['group_by'] ?? 'day'; // day, week, month
+    $groupBy = $data['group_by'] ?? 'day';
+    
+    // Add one day to end date to include full day
+    $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
     
     $query = "SELECT 
                 FORMAT(SaleDate, 'yyyy-MM-dd') AS Date,
@@ -499,13 +773,17 @@ function generateCustomReport($conn, $data) {
                 ISNULL(SUM(TotalAmount), 0) AS TotalSales,
                 ISNULL(AVG(TotalAmount), 0) AS AverageSale
               FROM Sales
-              WHERE SaleDate BETWEEN :start AND :end
-              AND Status != 'cancelled'
+              WHERE SaleDate >= :start AND SaleDate < :end
+              AND (Status != 'cancelled' OR Status IS NULL)
+              AND Branch = :branch
               GROUP BY FORMAT(SaleDate, 'yyyy-MM-dd')
-              ORDER BY Date ASC";
+              ORDER BY MIN(SaleDate) ASC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $report = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode([
@@ -519,11 +797,13 @@ function generateCustomReport($conn, $data) {
     ]);
 }
 
-function exportReport($conn) {
+function exportReport($conn, $currentBranch) {
     $type = $_GET['type'] ?? 'sales';
-    $format = $_GET['format'] ?? 'csv';
     $startDate = $_GET['start_date'] ?? date('Y-m-01');
     $endDate = $_GET['end_date'] ?? date('Y-m-t');
+    
+    // Add one day to end date to include full day
+    $endDatePlus = date('Y-m-d', strtotime($endDate . ' +1 day'));
     
     if ($type === 'sales') {
         $query = "SELECT 
@@ -536,17 +816,22 @@ function exportReport($conn) {
                     s.ChangeAmount,
                     s.Status
                   FROM Sales s
-                  WHERE s.SaleDate BETWEEN :start AND :end
+                  WHERE s.SaleDate >= :start AND s.SaleDate < :end
+                  AND s.Branch = :branch
                   ORDER BY s.SaleDate DESC";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->bindParam(':start', $startDate);
+        $stmt->bindParam(':end', $endDatePlus);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $filename = "sales_report_{$startDate}_to_{$endDate}.csv";
+        $filename = "sales_report_" . date('Y-m-d') . ".csv";
         
-        header('Content-Type: text/csv');
+        header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo "\xEF\xBB\xBF";
         
         $output = fopen('php://output', 'w');
         fputcsv($output, ['Receipt No', 'Date', 'Customer', 'Payment Method', 'Total Amount', 'Amount Received', 'Change', 'Status']);
@@ -565,21 +850,60 @@ function exportReport($conn) {
                     SUM(si.Total) AS TotalRevenue
                   FROM SaleItems si
                   INNER JOIN Sales s ON si.SaleID = s.SaleID
-                  WHERE s.SaleDate BETWEEN :start AND :end
+                  WHERE s.SaleDate >= :start AND s.SaleDate < :end
+                  AND s.Branch = :branch
                   GROUP BY si.ProductCode, si.ProductName
-                  ORDER BY TotalRevenue DESC";
+                  ORDER BY SUM(si.Total) DESC";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([':start' => $startDate, ':end' => $endDate]);
+        $stmt->bindParam(':start', $startDate);
+        $stmt->bindParam(':end', $endDatePlus);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $filename = "product_report_{$startDate}_to_{$endDate}.csv";
+        $filename = "product_report_" . date('Y-m-d') . ".csv";
         
-        header('Content-Type: text/csv');
+        header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo "\xEF\xBB\xBF";
         
         $output = fopen('php://output', 'w');
         fputcsv($output, ['Product Code', 'Product Name', 'Quantity Sold', 'Total Revenue']);
+        
+        foreach ($data as $row) {
+            fputcsv($output, $row);
+        }
+        
+        fclose($output);
+        exit();
+    } elseif ($type === 'payment') {
+        $query = "SELECT 
+                    PaymentMethod,
+                    COUNT(*) AS TransactionCount,
+                    ISNULL(SUM(TotalAmount), 0) AS TotalAmount
+                  FROM Sales
+                  WHERE SaleDate >= :start AND SaleDate < :end
+                  AND (Status != 'cancelled' OR Status IS NULL)
+                  AND Branch = :branch
+                  GROUP BY PaymentMethod
+                  ORDER BY SUM(TotalAmount) DESC";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':start', $startDate);
+        $stmt->bindParam(':end', $endDatePlus);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $filename = "payment_report_" . date('Y-m-d') . ".csv";
+        
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo "\xEF\xBB\xBF";
+        
+        $output = fopen('php://output', 'w');
+        fputcsv($output, ['Payment Method', 'Transaction Count', 'Total Amount']);
         
         foreach ($data as $row) {
             fputcsv($output, $row);

@@ -1,4 +1,6 @@
-
+<?php
+// pages/transactions.php - Sales Transactions Page with Serialized Support
+?>
 <style>
     .transactions-container {
         padding: 0;
@@ -202,7 +204,7 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Modal Styles - Fixed for better display */
+    /* Modal Styles */
     .modal-content {
         border-radius: 20px;
         max-width: 500px;
@@ -314,6 +316,22 @@
         margin-bottom: 15px;
     }
     
+    .unit-info {
+        font-size: 10px;
+        color: #6c7a91;
+        font-family: monospace;
+        margin-top: 3px;
+    }
+    
+    .badge-serialized {
+        background: #4f9eff;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 9px;
+        margin-left: 5px;
+    }
+    
     @media (max-width: 768px) {
         .stats-row {
             grid-template-columns: repeat(2, 1fr);
@@ -358,7 +376,6 @@
         
         body {
             background: white;
-            
         }
         
         .modal {
@@ -416,7 +433,7 @@
             <div class="col-md-4">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Search by receipt or customer..." onkeyup="filterTransactions()">
+                    <input type="text" id="searchInput" placeholder="Search by receipt, customer, IMEI, or serial..." onkeyup="filterTransactions()">
                 </div>
             </div>
             <div class="col-md-4">
@@ -453,6 +470,7 @@
                         <th>Date</th>
                         <th>Customer</th>
                         <th>Payment</th>
+                        <th>Products / Units</th>
                         <th>Total Amount</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -460,7 +478,7 @@
                 </thead>
                 <tbody id="transactionsTableBody">
                     <tr>
-                        <td colspan="7" class="text-center">
+                        <td colspan="8" class="text-center">
                             <div class="loading-spinner"></div> Loading...
                         </td>
                     </tr>
@@ -532,11 +550,11 @@ async function loadTransactions() {
     } else {
         document.getElementById('transactionsTableBody').innerHTML = `
             <tr>
-                <td colspan="7" class="text-center text-muted py-5">
+                <td colspan="8" class="text-center text-muted py-5">
                     <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                     No transactions found
                 <\/td>
-          
+            </tr>
         `;
     }
 }
@@ -661,11 +679,11 @@ function displayTransactions(transactions) {
     if (!transactions || transactions.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-5 text-muted">
+                <td colspan="8" class="text-center py-5 text-muted">
                     <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                     No transactions found
                 <\/td>
-            
+            </tr>
         `;
         return;
     }
@@ -676,12 +694,16 @@ function displayTransactions(transactions) {
         const statusClass = transaction.Status === 'completed' ? 'badge-completed' : 'badge-cancelled';
         const amount = parseFloat(transaction.TotalAmount || 0);
         
+        // Show product names with unit info summary
+        let productsHtml = transaction.ProductName || 'Multiple Items';
+        
         return `
             <tr>
                 <td><strong>${escapeHtml(transaction.ReceiptNo || 'N/A')}</strong></td>
                 <td><small>${transaction.SaleDate || ''}</small></td>
                 <td>${escapeHtml(transaction.CustomerName || 'Walk-in Customer')}</td>
                 <td><span class="badge-payment ${paymentClass}">${(transaction.PaymentMethod || 'cash').toUpperCase()}</span></td>
+                <td>${escapeHtml(productsHtml)}</td>
                 <td class="fw-bold">₱${formatNumber(amount)}</td>
                 <td><span class="badge-status ${statusClass}">${transaction.Status || 'completed'}</span></td>
                 <td>
@@ -798,9 +820,17 @@ function generateReceiptHTML(data) {
             </div>
             <div class="receipt-item-details">
                 ${qty} x ₱${formatNumber(price)}
+                ${item.UnitNumber ? `<span class="badge-serialized">Unit #${item.UnitNumber}</span>` : ''}
                 <span style="float: right;">Code: ${escapeHtml(item.ProductCode || 'N/A')}</span>
             </div>
         `;
+        
+        if (item.IMEINumber) {
+            receiptHTML += `<div class="receipt-item-details" style="margin-left: 10px;">IMEI: ${escapeHtml(item.IMEINumber)}</div>`;
+        }
+        if (item.SerialNumber) {
+            receiptHTML += `<div class="receipt-item-details" style="margin-left: 10px;">Serial: ${escapeHtml(item.SerialNumber)}</div>`;
+        }
     });
     
     receiptHTML += `
@@ -900,6 +930,14 @@ function printTransaction() {
                 .receipt-total { border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 10px; }
                 .receipt-footer { text-align: center; margin-top: 15px; font-size: 10px; }
                 .fw-bold { font-weight: bold; }
+                .badge-serialized {
+                    background: #4f9eff;
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 12px;
+                    font-size: 9px;
+                    margin-left: 5px;
+                }
             </style>
         </head>
         <body>
@@ -990,7 +1028,6 @@ function setDefaultDates() {
     const day = String(today.getDate()).padStart(2, '0');
     const todayFormatted = `${year}-${month}-${day}`;
     
-    // Set start date to today
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     

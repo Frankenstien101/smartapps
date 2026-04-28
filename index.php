@@ -1,3 +1,5 @@
+<?php header('ngrok-skip-browser-warning: true'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

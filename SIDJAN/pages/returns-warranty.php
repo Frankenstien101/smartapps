@@ -1,5 +1,5 @@
 <?php
-// pages/returns-warranty.php - Returns and Warranty Management
+// pages/returns-warranty.php - Returns and Warranty Management with Serialized Support
 ?>
 <style>
     .returns-container {
@@ -169,6 +169,20 @@
     .btn-warranty { background: #10b981; color: white; }
     .btn-view { background: #4f9eff; color: white; }
     
+    /* Units Table in Details */
+    .units-table {
+        margin-top: 10px;
+        font-size: 11px;
+    }
+    
+    .units-table th {
+        background: #f1f3f5;
+    }
+    
+    .unit-available { color: #28a745; font-weight: 600; }
+    .unit-sold { color: #dc3545; }
+    .unit-transferred { color: #ffc107; }
+    
     /* Modal Styles */
     .modal-content {
         border-radius: 20px;
@@ -220,7 +234,7 @@
         position: fixed;
         bottom: 20px;
         right: 20px;
-        left: 20px;
+        left: auto;
         z-index: 1100;
     }
     
@@ -229,6 +243,7 @@
         border-radius: 12px;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
         border-left: 4px solid;
+        min-width: 250px;
     }
     
     .toast.success { border-left-color: #28a745; }
@@ -250,6 +265,10 @@
             font-size: 12px;
             padding: 8px;
         }
+        .toast-container {
+            left: 20px;
+            right: 20px;
+        }
     }
 </style>
 
@@ -257,7 +276,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4><i class="fas fa-undo-alt"></i> Returns & Warranty</h4>
-            <p class="text-muted mb-0">Manage product returns and warranty claims</p>
+            <p class="text-muted mb-0">Manage product returns and warranty claims with unit tracking</p>
         </div>
     </div>
     
@@ -297,7 +316,7 @@
     <div class="search-section">
         <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Search by receipt number, customer name, or product...">
+            <input type="text" id="searchInput" placeholder="Search by receipt number, customer name, product, IMEI, or serial...">
         </div>
     </div>
     
@@ -311,7 +330,7 @@
                         <th>Receipt No.</th>
                         <th>Date</th>
                         <th>Customer</th>
-                        <th>Product</th>
+                        <th>Product / Unit</th>
                         <th>Amount</th>
                         <th>Payment Type</th>
                         <th>Status</th>
@@ -338,6 +357,13 @@
                 <input type="hidden" id="returnTransactionId">
                 <input type="hidden" id="returnTransactionType">
                 <div class="return-summary" id="returnSummary"></div>
+                <div class="mb-3">
+                    <label class="form-label">Select Unit to Return *</label>
+                    <select id="returnUnitId" class="form-select">
+                        <option value="">Select Unit</option>
+                    </select>
+                    <small class="text-muted">Select the specific unit being returned (for serialized items)</small>
+                </div>
                 <div class="mb-3">
                     <label class="form-label">Reason for Return *</label>
                     <select id="returnReason" class="form-select">
@@ -380,6 +406,13 @@
                 <input type="hidden" id="warrantyTransactionType">
                 <div class="return-summary" id="warrantySummary"></div>
                 <div class="mb-3">
+                    <label class="form-label">Select Unit *</label>
+                    <select id="warrantyUnitId" class="form-select">
+                        <option value="">Select Unit</option>
+                    </select>
+                    <small class="text-muted">Select the specific unit for warranty claim</small>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Issue Description *</label>
                     <textarea id="warrantyIssue" class="form-control" rows="3" placeholder="Describe the issue with the product..."></textarea>
                 </div>
@@ -408,11 +441,15 @@
 // API Configuration
 const API_URL = '/SIDJAN/datafetcher/stockindata.php';
 const INSTALLMENT_API_URL = '/SIDJAN/datafetcher/installmentdata.php';
+const PRODUCT_API_URL = '/SIDJAN/datafetcher/productdata.php';
 
 let currentTab = 'sales';
 let allSales = [];
 let allInstallments = [];
+let allReturns = [];
+let allWarranties = [];
 let filteredData = [];
+let currentSaleItems = [];
 
 // ============================================
 // API CALLS
@@ -447,7 +484,30 @@ async function loadInstallments() {
     }
 }
 
-// FIXED: Correct function names for return and warranty
+async function loadReturns() {
+    const result = await apiCall(API_URL, 'getReturns');
+    if (result.success && result.data) {
+        allReturns = result.data;
+        filterAndDisplay();
+    }
+}
+
+async function loadWarranties() {
+    const result = await apiCall(API_URL, 'getWarrantyClaims');
+    if (result.success && result.data) {
+        allWarranties = result.data;
+        filterAndDisplay();
+    }
+}
+
+async function getSaleItems(saleId) {
+    const result = await apiCall(API_URL, `getSaleById&id=${saleId}`);
+    if (result.success && result.data) {
+        return result.data.items || [];
+    }
+    return [];
+}
+
 async function processCashReturn(transactionId, data) {
     const result = await apiCall(API_URL, 'processReturn', 'POST', data);
     if (result.success) {
@@ -511,6 +571,9 @@ function switchTab(tab) {
     };
     document.getElementById('tableHeader').innerText = headers[tab];
     
+    if (tab === 'returns') loadReturns();
+    if (tab === 'warranty') loadWarranties();
+    
     filterAndDisplay();
 }
 
@@ -534,8 +597,10 @@ function filterAndDisplay() {
         });
         displayInstallmentTable();
     } else if (currentTab === 'returns') {
+        filteredData = allReturns;
         displayReturnsList();
     } else if (currentTab === 'warranty') {
+        filteredData = allWarranties;
         displayWarrantyList();
     }
     
@@ -546,7 +611,7 @@ function displaySalesTable() {
     const tbody = document.getElementById('tableBody');
     
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center empty-state"><i class="fas fa-inbox"></i><p>No transactions found</p><\/td><\/tr>';
+        tbody.innerHTML = '<table><td colspan="8" class="text-center empty-state"><i class="fas fa-inbox"></i><p>No transactions found</p><\/td><\/tr>';
         return;
     }
     
@@ -608,22 +673,65 @@ function displayInstallmentTable() {
 
 function displayReturnsList() {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = `
-        <tr><td colspan="8" class="text-center empty-state">
-            <i class="fas fa-exchange-alt"></i>
-            <p>Return requests will appear here</p>
-        <\/td><\/tr>
-    `;
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center empty-state"><i class="fas fa-exchange-alt"></i><p>No return requests found</p><\/td><\/tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filteredData.map(returnItem => {
+        let statusClass = '';
+        if (returnItem.Status === 'pending') statusClass = 'badge-pending';
+        else if (returnItem.Status === 'approved') statusClass = 'badge-approved';
+        else if (returnItem.Status === 'rejected') statusClass = 'badge-rejected';
+        else if (returnItem.Status === 'completed') statusClass = 'badge-approved';
+        
+        return `
+            <tr>
+                <td><strong>${returnItem.ReturnNo || 'N/A'}</strong><\/td>
+                <td><small>${returnItem.CreatedAt || ''}<\/small><\/td>
+                <td>${escapeHtml(returnItem.CustomerName || 'N/A')}<\/td>
+                <td>${escapeHtml(returnItem.ProductName || '-')}<br><small class="text-muted">Unit #${returnItem.UnitNumber || '-'}<\/small><\/td>
+                <td>₱${formatNumber(returnItem.RefundAmount)}<\/td>
+                <td><span class="badge-cash">RETURN</span><\/td>
+                <td><span class="${statusClass}">${returnItem.Status?.toUpperCase() || 'PENDING'}<\/span><\/td>
+                <td>
+                    <button class="btn-action btn-view" onclick="viewReturnDetails(${returnItem.ReturnID})">View</button>
+                <\/td>
+            <\/tr>
+        `;
+    }).join('');
 }
 
 function displayWarrantyList() {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = `
-        <tr><td colspan="8" class="text-center empty-state">
-            <i class="fas fa-shield-alt"></i>
-            <p>Warranty claims will appear here after submission</p>
-        <\/td><\/tr>
-    `;
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center empty-state"><i class="fas fa-shield-alt"></i><p>No warranty claims found</p><\/td><\/tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filteredData.map(warranty => {
+        let statusClass = '';
+        if (warranty.Status === 'pending') statusClass = 'badge-pending';
+        else if (warranty.Status === 'approved') statusClass = 'badge-approved';
+        else if (warranty.Status === 'rejected') statusClass = 'badge-rejected';
+        else if (warranty.Status === 'completed') statusClass = 'badge-approved';
+        
+        return `
+            <tr>
+                <td><strong>${warranty.WarrantyNo || 'N/A'}</strong><\/td>
+                <td><small>${warranty.CreatedAt || ''}<\/small><\/td>
+                <td>${escapeHtml(warranty.CustomerName || 'N/A')}<\/td>
+                <td>${escapeHtml(warranty.ProductName || '-')}<br><small class="text-muted">Unit #${warranty.UnitNumber || '-'}<\/small><\/td>
+                <td>${warranty.WarrantyType || 'Repair'}<\/td>
+                <td><span class="${statusClass}">${warranty.Status?.toUpperCase() || 'PENDING'}<\/span><\/td>
+                <td>
+                    <button class="btn-action btn-view" onclick="viewWarrantyDetails(${warranty.WarrantyID})">View</button>
+                <\/td>
+            <\/tr>
+        `;
+    }).join('');
 }
 
 // ============================================
@@ -634,14 +742,14 @@ function updateStats() {
     const totalReturns = allSales.filter(s => s.Status === 'returned').length + 
                         allInstallments.filter(i => i.Status === 'returned').length;
     
-    const pendingReturns = 0;
+    const pendingReturns = allReturns.filter(r => r.Status === 'pending').length;
     
     let totalRefund = 0;
     allSales.filter(s => s.Status === 'returned').forEach(s => totalRefund += parseFloat(s.TotalAmount) || 0);
     allInstallments.filter(i => i.Status === 'returned').forEach(i => totalRefund += parseFloat(i.TotalAmount) || 0);
     
     document.getElementById('totalReturns').innerText = totalReturns;
-    document.getElementById('activeWarranty').innerText = 0;
+    document.getElementById('activeWarranty').innerText = allWarranties.filter(w => w.Status === 'approved').length;
     document.getElementById('pendingReturns').innerText = pendingReturns;
     document.getElementById('totalRefund').innerHTML = '₱' + formatNumber(totalRefund);
 }
@@ -650,7 +758,7 @@ function updateStats() {
 // MODAL FUNCTIONS
 // ============================================
 
-function openReturnModal(type, id, receiptNo, customerName, amount) {
+async function openReturnModal(type, id, receiptNo, customerName, amount) {
     document.getElementById('returnTransactionId').value = id;
     document.getElementById('returnTransactionType').value = type;
     document.getElementById('returnSummary').innerHTML = `
@@ -662,11 +770,27 @@ function openReturnModal(type, id, receiptNo, customerName, amount) {
     document.getElementById('returnReason').value = '';
     document.getElementById('returnNotes').value = '';
     
+    // Load items for this sale to populate unit selection
+    if (type === 'sales') {
+        const items = await getSaleItems(id);
+        currentSaleItems = items;
+        
+        const unitSelect = document.getElementById('returnUnitId');
+        unitSelect.innerHTML = '<option value="">Select Unit to Return</option>';
+        
+        items.forEach(item => {
+            unitSelect.innerHTML += `<option value="${item.UnitID || item.ProductID}" data-price="${item.Price}">
+                ${item.ProductName} - ${item.UnitNumber ? `Unit #${item.UnitNumber}` : `Qty: ${item.Quantity}`}
+                ${item.IMEINumber ? ` (IMEI: ${item.IMEINumber})` : ''}
+            </option>`;
+        });
+    }
+    
     const modal = new bootstrap.Modal(document.getElementById('returnModal'));
     modal.show();
 }
 
-function openWarrantyModal(type, id, receiptNo, customerName) {
+async function openWarrantyModal(type, id, receiptNo, customerName) {
     document.getElementById('warrantyTransactionId').value = id;
     document.getElementById('warrantyTransactionType').value = type;
     document.getElementById('warrantySummary').innerHTML = `
@@ -676,6 +800,21 @@ function openWarrantyModal(type, id, receiptNo, customerName) {
     document.getElementById('warrantyIssue').value = '';
     document.getElementById('warrantyType').value = 'Repair';
     document.getElementById('warrantyNotes').value = '';
+    
+    // Load items for this sale to populate unit selection
+    if (type === 'sales') {
+        const items = await getSaleItems(id);
+        
+        const unitSelect = document.getElementById('warrantyUnitId');
+        unitSelect.innerHTML = '<option value="">Select Unit for Warranty</option>';
+        
+        items.forEach(item => {
+            unitSelect.innerHTML += `<option value="${item.UnitID || item.ProductID}">
+                ${item.ProductName} - ${item.UnitNumber ? `Unit #${item.UnitNumber}` : `Qty: ${item.Quantity}`}
+                ${item.IMEINumber ? ` (IMEI: ${item.IMEINumber})` : ''}
+            </option>`;
+        });
+    }
     
     const modal = new bootstrap.Modal(document.getElementById('warrantyModal'));
     modal.show();
@@ -693,6 +832,18 @@ async function viewTransactionDetails(type, id) {
 function showTransactionDetails(data) {
     const sale = data.sale;
     const items = data.items || [];
+    
+    let itemsHtml = '';
+    items.forEach(item => {
+        itemsHtml += `<tr>
+            <td>${escapeHtml(item.ProductName)}</td>
+            <td>${item.Quantity}</td>
+            <td>₱${formatNumber(item.Price)}</td>
+            <td>₱${formatNumber(item.Total)}</td>
+            <td>${item.UnitNumber ? `Unit #${item.UnitNumber}` : '-'}</td>
+            <td>${item.IMEINumber || '-'}</td>
+        </tr>`;
+    });
     
     let html = `
         <div class="modal fade" id="detailsModal" tabindex="-1">
@@ -717,22 +868,11 @@ function showTransactionDetails(data) {
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
-                                <thead><tr><th>Product</th><th>Quantity</th><th>Price</th><th>Total</th></tr></thead>
+                                <thead><tr><th>Product</th><th>Quantity</th><th>Price</th><th>Total</th><th>Unit #</th><th>IMEI/Serial</th></tr></thead>
                                 <tbody>
-    `;
-    
-    items.forEach(item => {
-        html += `<tr>
-            <td>${escapeHtml(item.ProductName)}</td>
-            <td>${item.Quantity}</td>
-            <td>₱${formatNumber(item.Price)}</td>
-            <td>₱${formatNumber(item.Total)}</td>
-        </tr>`;
-    });
-    
-    html += `
+                                    ${itemsHtml}
                                 </tbody>
-                            </table>
+                            追赶
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -751,11 +891,126 @@ function showTransactionDetails(data) {
     modal.show();
 }
 
+async function viewReturnDetails(returnId) {
+    const result = await apiCall(API_URL, `getReturnById&id=${returnId}`);
+    if (result.success && result.data) {
+        const r = result.data;
+        let html = `
+            <div class="modal fade" id="detailsModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Return Details - ${r.ReturnNo}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <strong>Return No:</strong> ${r.ReturnNo}<br>
+                                    <strong>Customer:</strong> ${escapeHtml(r.CustomerName)}<br>
+                                    <strong>Date:</strong> ${r.CreatedAt}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Refund Amount:</strong> ₱${formatNumber(r.RefundAmount)}<br>
+                                    <strong>Status:</strong> ${r.Status?.toUpperCase()}<br>
+                                    <strong>Reason:</strong> ${r.Reason}
+                                </div>
+                            </div>
+                            <div class="alert alert-info">
+                                <strong>Product:</strong> ${escapeHtml(r.ProductName)}<br>
+                                <strong>Unit #:</strong> ${r.UnitNumber || 'N/A'}<br>
+                                <strong>IMEI:</strong> ${r.IMEINumber || 'N/A'}<br>
+                                <strong>Serial:</strong> ${r.SerialNumber || 'N/A'}
+                            </div>
+                            ${r.Notes ? `<div class="alert alert-secondary"><strong>Notes:</strong> ${escapeHtml(r.Notes)}</div>` : ''}
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const existingModal = document.getElementById('detailsModal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', html);
+        const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+        modal.show();
+    }
+}
+
+async function viewWarrantyDetails(warrantyId) {
+    const result = await apiCall(API_URL, `getWarrantyById&id=${warrantyId}`);
+    if (result.success && result.data) {
+        const w = result.data;
+        let html = `
+            <div class="modal fade" id="detailsModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Warranty Details - ${w.WarrantyNo}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <strong>Warranty No:</strong> ${w.WarrantyNo}<br>
+                                    <strong>Customer:</strong> ${escapeHtml(w.CustomerName)}<br>
+                                    <strong>Date:</strong> ${w.CreatedAt}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Expiry Date:</strong> ${w.ExpiryDate}<br>
+                                    <strong>Status:</strong> ${w.Status?.toUpperCase()}<br>
+                                    <strong>Type:</strong> ${w.WarrantyType}
+                                </div>
+                            </div>
+                            <div class="alert alert-info">
+                                <strong>Product:</strong> ${escapeHtml(w.ProductName)}<br>
+                                <strong>Unit #:</strong> ${w.UnitNumber || 'N/A'}<br>
+                                <strong>IMEI:</strong> ${w.IMEINumber || 'N/A'}<br>
+                                <strong>Serial:</strong> ${w.SerialNumber || 'N/A'}
+                            </div>
+                            <div class="alert alert-warning">
+                                <strong>Issue:</strong> ${escapeHtml(w.Issue)}
+                            </div>
+                            ${w.Resolution ? `<div class="alert alert-success"><strong>Resolution:</strong> ${escapeHtml(w.Resolution)}</div>` : ''}
+                            ${w.Notes ? `<div class="alert alert-secondary"><strong>Notes:</strong> ${escapeHtml(w.Notes)}</div>` : ''}
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const existingModal = document.getElementById('detailsModal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', html);
+        const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+        modal.show();
+    }
+}
+
 async function viewInstallmentDetails(id) {
     const result = await apiCall(INSTALLMENT_API_URL, `getInstallmentById&id=${id}`);
     if (result.success && result.data) {
         const installment = result.data;
         const payments = result.payments || [];
+        
+        let paymentsHtml = '';
+        payments.forEach(p => {
+            paymentsHtml += `<tr>
+                <td>${p.PaymentNo}</td>
+                <td>${p.DueDate}</td>
+                <td>₱${formatNumber(p.Amount)}</td>
+                <td><span class="badge-${p.Status === 'paid' ? 'approved' : 'pending'}">${p.Status?.toUpperCase()}</span></td>
+                <td>${p.PaymentDate || '-'}</td>
+            </tr>`;
+        });
         
         let html = `
             <div class="modal fade" id="detailsModal" tabindex="-1">
@@ -763,7 +1018,6 @@ async function viewInstallmentDetails(id) {
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">Installment Details - ${installment.InstallmentNo}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="row mb-3">
@@ -782,19 +1036,7 @@ async function viewInstallmentDetails(id) {
                                 <table class="table table-sm">
                                     <thead><tr><th>Payment #</th><th>Due Date</th><th>Amount</th><th>Status</th><th>Payment Date</th></tr></thead>
                                     <tbody>
-        `;
-        
-        payments.forEach(p => {
-            html += `<tr>
-                <td>${p.PaymentNo}</td>
-                <td>${p.DueDate}</td>
-                <td>₱${formatNumber(p.Amount)}</td>
-                <td><span class="badge-${p.Status === 'paid' ? 'approved' : 'pending'}">${p.Status?.toUpperCase()}</span></td>
-                <td>${p.PaymentDate || '-'}</td>
-            </tr>`;
-        });
-        
-        html += `
+                                        ${paymentsHtml}
                                     </tbody>
                                 </table>
                             </div>
@@ -817,14 +1059,20 @@ async function viewInstallmentDetails(id) {
 }
 
 // ============================================
-// BUTTON HANDLERS - FIXED FUNCTION NAMES
+// BUTTON HANDLERS
 // ============================================
 
 document.getElementById('confirmReturnBtn').addEventListener('click', async function() {
     const id = document.getElementById('returnTransactionId').value;
     const type = document.getElementById('returnTransactionType').value;
+    const unitId = document.getElementById('returnUnitId').value;
     const reason = document.getElementById('returnReason').value;
     const notes = document.getElementById('returnNotes').value;
+    
+    if (!unitId) {
+        showToast('Please select a unit to return', 'warning');
+        return;
+    }
     
     if (!reason) {
         showToast('Please select a reason for return', 'warning');
@@ -834,6 +1082,7 @@ document.getElementById('confirmReturnBtn').addEventListener('click', async func
     const data = {
         transaction_id: parseInt(id),
         transaction_type: type,
+        unit_id: parseInt(unitId),
         reason: reason,
         notes: notes
     };
@@ -853,9 +1102,15 @@ document.getElementById('confirmReturnBtn').addEventListener('click', async func
 document.getElementById('confirmWarrantyBtn').addEventListener('click', async function() {
     const id = document.getElementById('warrantyTransactionId').value;
     const type = document.getElementById('warrantyTransactionType').value;
+    const unitId = document.getElementById('warrantyUnitId').value;
     const issue = document.getElementById('warrantyIssue').value;
     const warrantyType = document.getElementById('warrantyType').value;
     const notes = document.getElementById('warrantyNotes').value;
+    
+    if (!unitId) {
+        showToast('Please select a unit for warranty claim', 'warning');
+        return;
+    }
     
     if (!issue) {
         showToast('Please describe the issue', 'warning');
@@ -865,6 +1120,7 @@ document.getElementById('confirmWarrantyBtn').addEventListener('click', async fu
     const data = {
         transaction_id: parseInt(id),
         transaction_type: type,
+        unit_id: parseInt(unitId),
         issue: issue,
         warranty_type: warrantyType,
         notes: notes
@@ -886,8 +1142,12 @@ document.getElementById('confirmWarrantyBtn').addEventListener('click', async fu
 // HELPER FUNCTIONS
 // ============================================
 
+let searchTimeout;
 document.getElementById('searchInput').addEventListener('input', function() {
-    filterAndDisplay();
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        filterAndDisplay();
+    }, 300);
 });
 
 function formatNumber(value) {
@@ -939,5 +1199,7 @@ function escapeHtml(text) {
 document.addEventListener('DOMContentLoaded', function() {
     loadSales();
     loadInstallments();
+    loadReturns();
+    loadWarranties();
 });
 </script>

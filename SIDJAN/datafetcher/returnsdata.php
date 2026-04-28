@@ -1,9 +1,11 @@
 <?php
-// api_returns.php - Backend API for Returns and Warranty Management
+// api_returns.php - Backend API for Returns and Warranty Management with Branch Support
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+include '../DB/dbcon.php';
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -14,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-try {
-    $conn = new PDO(
-        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-        "sa",
-        'bspi.@dm1n'
-    );
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-    exit();
-}
+//try {
+//    $conn = new PDO(
+//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
+//        "sa",
+//        'bspi.@dm1n'
+//    );
+//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+//} catch (PDOException $e) {
+//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
+//    exit();
+//}
 
 // Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
@@ -34,6 +36,8 @@ $action = $_GET['action'] ?? '';
 // Start session for user tracking
 session_start();
 $currentUser = $_SESSION['username'] ?? $_SESSION['NAME'] ?? 'system';
+$currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch';
+$userRole = $_SESSION['role'] ?? 'staff';
 
 // ============================================
 // API ROUTES
@@ -62,21 +66,23 @@ try {
 // ============================================
 
 function handleGetRequest($conn, $action) {
+    global $currentBranch, $userRole;
+    
     switch ($action) {
         case 'getReturns':
-            getReturns($conn);
+            getReturns($conn, $currentBranch, $userRole);
             break;
         case 'getWarrantyClaims':
-            getWarrantyClaims($conn);
+            getWarrantyClaims($conn, $currentBranch, $userRole);
             break;
         case 'getReturnById':
-            getReturnById($conn);
+            getReturnById($conn, $currentBranch);
             break;
         case 'getWarrantyById':
-            getWarrantyById($conn);
+            getWarrantyById($conn, $currentBranch);
             break;
         case 'getReturnStats':
-            getReturnStats($conn);
+            getReturnStats($conn, $currentBranch);
             break;
         default:
             echo json_encode(['error' => 'Invalid action']);
@@ -84,14 +90,15 @@ function handleGetRequest($conn, $action) {
 }
 
 function handlePostRequest($conn, $action, $currentUser) {
+    global $currentBranch;
     $data = json_decode(file_get_contents('php://input'), true);
     
     switch ($action) {
         case 'processReturn':
-            processReturn($conn, $data, $currentUser);
+            processReturn($conn, $data, $currentUser, $currentBranch);
             break;
         case 'submitWarranty':
-            submitWarranty($conn, $data, $currentUser);
+            submitWarranty($conn, $data, $currentUser, $currentBranch);
             break;
         case 'updateReturnStatus':
             updateReturnStatus($conn, $data, $currentUser);
@@ -120,10 +127,10 @@ function handlePutRequest($conn, $action, $currentUser) {
 }
 
 // ============================================
-// RETURNS FUNCTIONS
+// RETURNS FUNCTIONS WITH BRANCH
 // ============================================
 
-function processReturn($conn, $data, $currentUser) {
+function processReturn($conn, $data, $currentUser, $currentBranch) {
     $transactionId = $data['transaction_id'] ?? 0;
     $transactionType = $data['transaction_type'] ?? 'sales'; // 'sales' or 'installment'
     $reason = $data['reason'] ?? '';
@@ -145,9 +152,9 @@ function processReturn($conn, $data, $currentUser) {
     try {
         if ($transactionType === 'sales') {
             // Get sale details
-            $saleQuery = "SELECT ReceiptNo, CustomerName, TotalAmount, Status FROM Sales WHERE SaleID = :id";
+            $saleQuery = "SELECT ReceiptNo, CustomerName, TotalAmount, Status FROM Sales WHERE SaleID = :id AND Branch = :branch";
             $stmt = $conn->prepare($saleQuery);
-            $stmt->execute([':id' => $transactionId]);
+            $stmt->execute([':id' => $transactionId, ':branch' => $currentBranch]);
             $sale = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$sale) {
@@ -171,9 +178,9 @@ function processReturn($conn, $data, $currentUser) {
             
             // Restore product stock
             foreach ($items as $item) {
-                $restoreStock = "UPDATE Products SET CurrentStock = CurrentStock + :qty WHERE ProductID = :id";
+                $restoreStock = "UPDATE Products SET CurrentStock = CurrentStock + :qty WHERE ProductID = :id AND Branch = :branch";
                 $stmt = $conn->prepare($restoreStock);
-                $stmt->execute([':qty' => $item['Quantity'], ':id' => $item['ProductID']]);
+                $stmt->execute([':qty' => $item['Quantity'], ':id' => $item['ProductID'], ':branch' => $currentBranch]);
             }
             
             $refundAmount = $sale['TotalAmount'];
@@ -182,9 +189,9 @@ function processReturn($conn, $data, $currentUser) {
             
         } elseif ($transactionType === 'installment') {
             // Get installment details
-            $installmentQuery = "SELECT InstallmentNo, CustomerName, TotalAmount, PaidAmount, Status FROM Installments WHERE InstallmentID = :id";
+            $installmentQuery = "SELECT InstallmentNo, CustomerName, TotalAmount, PaidAmount, Status FROM Installments WHERE InstallmentID = :id AND Branch = :branch";
             $stmt = $conn->prepare($installmentQuery);
-            $stmt->execute([':id' => $transactionId]);
+            $stmt->execute([':id' => $transactionId, ':branch' => $currentBranch]);
             $installment = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$installment) {
@@ -211,10 +218,10 @@ function processReturn($conn, $data, $currentUser) {
         $returnNo = 'RTRN-' . date('Ymd') . '-' . rand(1000, 9999);
         $insertReturn = "INSERT INTO Returns 
                         (ReturnNo, TransactionID, TransactionType, ReceiptNo, CustomerName, 
-                         Reason, RefundAmount, Status, Notes, CreatedBy, CreatedAt)
+                         Reason, RefundAmount, Status, Notes, CreatedBy, CreatedAt, Branch)
                         VALUES 
                         (:no, :tid, :ttype, :receipt, :customer,
-                         :reason, :refund, 'pending', :notes, :user, GETDATE())";
+                         :reason, :refund, 'pending', :notes, :user, GETDATE(), :branch)";
         
         $stmt = $conn->prepare($insertReturn);
         $stmt->execute([
@@ -226,7 +233,8 @@ function processReturn($conn, $data, $currentUser) {
             ':reason' => $reason,
             ':refund' => $refundAmount,
             ':notes' => $notes,
-            ':user' => $currentUser
+            ':user' => $currentUser,
+            ':branch' => $currentBranch
         ]);
         
         $returnId = $conn->lastInsertId();
@@ -238,7 +246,8 @@ function processReturn($conn, $data, $currentUser) {
             'message' => 'Return processed successfully',
             'return_id' => $returnId,
             'return_no' => $returnNo,
-            'refund_amount' => $refundAmount
+            'refund_amount' => $refundAmount,
+            'branch' => $currentBranch
         ]);
         
     } catch (Exception $e) {
@@ -276,35 +285,47 @@ function approveReturn($conn, $data, $currentUser) {
     echo json_encode(['success' => true, 'message' => 'Return ' . $status . ' successfully']);
 }
 
-function getReturns($conn) {
-    $limit = $_GET['limit'] ?? 100;
+function getReturns($conn, $currentBranch, $userRole) {
+    $limit = intval($_GET['limit'] ?? 100);
     $status = $_GET['status'] ?? 'all';
     
-    $statusFilter = $status !== 'all' ? "AND r.Status = :status" : "";
+    // Build status filter
+    $statusFilter = "";
+    if ($status !== 'all') {
+        $statusFilter = "AND r.Status = '$status'";
+    }
     
-    $query = "SELECT TOP (:limit) 
+    // Branch filter
+    $branchFilter = "";
+    if ($userRole !== 'admin') {
+        $branchFilter = "AND r.Branch = :branch";
+    }
+    
+    $query = "SELECT TOP $limit
                 r.ReturnID, r.ReturnNo, r.TransactionID, r.TransactionType,
                 r.ReceiptNo, r.CustomerName, r.Reason, r.RefundAmount,
                 r.Status, r.Notes,
                 FORMAT(r.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
                 FORMAT(r.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt,
-                r.CreatedBy, r.ApprovedBy
+                r.CreatedBy, r.ApprovedBy,
+                r.Branch
               FROM Returns r
-              WHERE 1=1 $statusFilter
+              WHERE 1=1 $statusFilter $branchFilter
               ORDER BY r.CreatedAt DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    if ($status !== 'all') {
-        $stmt->bindParam(':status', $status);
+    
+    if ($userRole !== 'admin') {
+        $stmt->bindParam(':branch', $currentBranch);
     }
+    
     $stmt->execute();
     $returns = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $returns, 'count' => count($returns)]);
 }
 
-function getReturnById($conn) {
+function getReturnById($conn, $currentBranch) {
     $id = $_GET['id'] ?? 0;
     
     if (!$id) {
@@ -317,35 +338,37 @@ function getReturnById($conn) {
                 FORMAT(r.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
                 FORMAT(r.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt
               FROM Returns r
-              WHERE r.ReturnID = :id";
+              WHERE r.ReturnID = :id AND r.Branch = :branch";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $id]);
+    $stmt->execute([':id' => $id, ':branch' => $currentBranch]);
     $return = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $return]);
 }
 
-function getReturnStats($conn) {
+function getReturnStats($conn, $currentBranch) {
     $query = "SELECT 
                 COUNT(*) AS TotalReturns,
                 SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingReturns,
                 SUM(CASE WHEN Status = 'approved' THEN 1 ELSE 0 END) AS ApprovedReturns,
                 SUM(CASE WHEN Status = 'rejected' THEN 1 ELSE 0 END) AS RejectedReturns,
                 ISNULL(SUM(RefundAmount), 0) AS TotalRefundAmount
-              FROM Returns";
+              FROM Returns
+              WHERE Branch = :branch";
     
-    $stmt = $conn->query($query);
+    $stmt = $conn->prepare($query);
+    $stmt->execute([':branch' => $currentBranch]);
     $stats = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $stats]);
 }
 
 // ============================================
-// WARRANTY FUNCTIONS
+// WARRANTY FUNCTIONS WITH BRANCH
 // ============================================
 
-function submitWarranty($conn, $data, $currentUser) {
+function submitWarranty($conn, $data, $currentUser, $currentBranch) {
     $transactionId = $data['transaction_id'] ?? 0;
     $transactionType = $data['transaction_type'] ?? 'sales';
     $issue = $data['issue'] ?? '';
@@ -367,9 +390,9 @@ function submitWarranty($conn, $data, $currentUser) {
     try {
         if ($transactionType === 'sales') {
             // Get sale details
-            $saleQuery = "SELECT ReceiptNo, CustomerName, SaleDate FROM Sales WHERE SaleID = :id";
+            $saleQuery = "SELECT ReceiptNo, CustomerName, SaleDate FROM Sales WHERE SaleID = :id AND Branch = :branch";
             $stmt = $conn->prepare($saleQuery);
-            $stmt->execute([':id' => $transactionId]);
+            $stmt->execute([':id' => $transactionId, ':branch' => $currentBranch]);
             $sale = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$sale) {
@@ -382,9 +405,9 @@ function submitWarranty($conn, $data, $currentUser) {
             
         } elseif ($transactionType === 'installment') {
             // Get installment details
-            $installmentQuery = "SELECT InstallmentNo, CustomerName, StartDate FROM Installments WHERE InstallmentID = :id";
+            $installmentQuery = "SELECT InstallmentNo, CustomerName, StartDate FROM Installments WHERE InstallmentID = :id AND Branch = :branch";
             $stmt = $conn->prepare($installmentQuery);
-            $stmt->execute([':id' => $transactionId]);
+            $stmt->execute([':id' => $transactionId, ':branch' => $currentBranch]);
             $installment = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$installment) {
@@ -405,10 +428,10 @@ function submitWarranty($conn, $data, $currentUser) {
         $warrantyNo = 'WRNT-' . date('Ymd') . '-' . rand(1000, 9999);
         $insertWarranty = "INSERT INTO WarrantyClaims 
                           (WarrantyNo, TransactionID, TransactionType, ReceiptNo, CustomerName,
-                           Issue, WarrantyType, Status, ExpiryDate, Notes, CreatedBy, CreatedAt)
+                           Issue, WarrantyType, Status, ExpiryDate, Notes, CreatedBy, CreatedAt, Branch)
                           VALUES 
                           (:no, :tid, :ttype, :receipt, :customer,
-                           :issue, :wtype, 'pending', :expiry, :notes, :user, GETDATE())";
+                           :issue, :wtype, 'pending', :expiry, :notes, :user, GETDATE(), :branch)";
         
         $stmt = $conn->prepare($insertWarranty);
         $stmt->execute([
@@ -421,7 +444,8 @@ function submitWarranty($conn, $data, $currentUser) {
             ':wtype' => $warrantyType,
             ':expiry' => $expiryDate,
             ':notes' => $notes,
-            ':user' => $currentUser
+            ':user' => $currentUser,
+            ':branch' => $currentBranch
         ]);
         
         $warrantyId = $conn->lastInsertId();
@@ -433,7 +457,8 @@ function submitWarranty($conn, $data, $currentUser) {
             'message' => 'Warranty claim submitted successfully',
             'warranty_id' => $warrantyId,
             'warranty_no' => $warrantyNo,
-            'expiry_date' => $expiryDate
+            'expiry_date' => $expiryDate,
+            'branch' => $currentBranch
         ]);
         
     } catch (Exception $e) {
@@ -518,36 +543,48 @@ function updateWarrantyStatus($conn, $data, $currentUser) {
     echo json_encode(['success' => true, 'message' => 'Warranty status updated']);
 }
 
-function getWarrantyClaims($conn) {
-    $limit = $_GET['limit'] ?? 100;
+function getWarrantyClaims($conn, $currentBranch, $userRole) {
+    $limit = intval($_GET['limit'] ?? 100);
     $status = $_GET['status'] ?? 'all';
     
-    $statusFilter = $status !== 'all' ? "AND w.Status = :status" : "";
+    // Build status filter
+    $statusFilter = "";
+    if ($status !== 'all') {
+        $statusFilter = "AND w.Status = '$status'";
+    }
     
-    $query = "SELECT TOP (:limit) 
+    // Branch filter
+    $branchFilter = "";
+    if ($userRole !== 'admin') {
+        $branchFilter = "AND w.Branch = :branch";
+    }
+    
+    $query = "SELECT TOP $limit
                 w.WarrantyID, w.WarrantyNo, w.TransactionID, w.TransactionType,
                 w.ReceiptNo, w.CustomerName, w.Issue, w.WarrantyType,
                 w.Status, w.Resolution, w.Notes,
                 FORMAT(w.ExpiryDate, 'yyyy-MM-dd') AS ExpiryDate,
                 FORMAT(w.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
                 FORMAT(w.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt,
-                w.CreatedBy, w.ApprovedBy
+                w.CreatedBy, w.ApprovedBy,
+                w.Branch
               FROM WarrantyClaims w
-              WHERE 1=1 $statusFilter
+              WHERE 1=1 $statusFilter $branchFilter
               ORDER BY w.CreatedAt DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    if ($status !== 'all') {
-        $stmt->bindParam(':status', $status);
+    
+    if ($userRole !== 'admin') {
+        $stmt->bindParam(':branch', $currentBranch);
     }
+    
     $stmt->execute();
     $claims = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $claims, 'count' => count($claims)]);
 }
 
-function getWarrantyById($conn) {
+function getWarrantyById($conn, $currentBranch) {
     $id = $_GET['id'] ?? 0;
     
     if (!$id) {
@@ -561,10 +598,10 @@ function getWarrantyById($conn) {
                 FORMAT(w.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
                 FORMAT(w.ApprovedAt, 'yyyy-MM-dd HH:mm') AS ApprovedAt
               FROM WarrantyClaims w
-              WHERE w.WarrantyID = :id";
+              WHERE w.WarrantyID = :id AND w.Branch = :branch";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':id' => $id]);
+    $stmt->execute([':id' => $id, ':branch' => $currentBranch]);
     $claim = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $claim]);

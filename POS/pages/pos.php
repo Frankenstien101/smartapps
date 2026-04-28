@@ -1,5 +1,5 @@
 <?php
-// pages/trans.php - Point of Sale Transaction Page
+// pages/trans.php - Point of Sale Transaction Page with Images, IMEI, Serial
 ?>
 <style>
     .pos-container {
@@ -67,6 +67,13 @@
     .cart-item-price {
         font-size: 12px;
         color: #6c7a91;
+    }
+    
+    .cart-item-imei, .cart-item-serial {
+        font-size: 9px;
+        color: #6c7a91;
+        font-family: monospace;
+        margin-top: 2px;
     }
     
     .cart-item-qty {
@@ -156,8 +163,14 @@
         border-bottom: 1px solid #eef2f7;
     }
     
+    .search-header h6 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
     .product-search-input {
         position: relative;
+        margin: 0 15px 15px 15px;
     }
     
     .product-search-input input {
@@ -187,8 +200,9 @@
     }
     
     .product-results {
-        max-height: 300px;
+        max-height: 350px;
         overflow-y: auto;
+        padding: 0 15px 15px 15px;
     }
     
     .product-result-item {
@@ -199,32 +213,72 @@
         border-bottom: 1px solid #eef2f7;
         cursor: pointer;
         transition: all 0.2s;
+        gap: 12px;
     }
     
     .product-result-item:hover {
         background: #eef2ff;
+        border-radius: 10px;
+    }
+    
+    .product-thumb {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    
+    .product-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .product-thumb i {
+        font-size: 24px;
+        color: #94a3b8;
+    }
+    
+    .product-info {
+        flex: 1;
     }
     
     .product-result-name {
         font-weight: 600;
         font-size: 14px;
+        margin-bottom: 3px;
     }
     
     .product-result-code {
         font-size: 10px;
         color: #6c7a91;
         font-family: monospace;
+        margin-bottom: 2px;
     }
     
-    .product-result-price {
-        font-size: 13px;
-        color: #4f9eff;
-        font-weight: 600;
+    .product-result-imei, .product-result-serial {
+        font-size: 9px;
+        color: #6c7a91;
+        font-family: monospace;
+        margin-top: 2px;
     }
     
     .product-result-stock {
-        font-size: 11px;
-        color: #6c7a91;
+        font-size: 10px;
+        margin-top: 3px;
+    }
+    
+    .product-result-price {
+        font-size: 14px;
+        color: #4f9eff;
+        font-weight: 700;
+        text-align: right;
+        flex-shrink: 0;
     }
     
     /* Customer Section */
@@ -239,6 +293,83 @@
     .customer-header {
         padding: 15px 20px;
         border-bottom: 1px solid #eef2f7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .customer-header h6 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .btn-select-customer {
+        background: linear-gradient(135deg, #1437d4 0%, #100de9 100%);
+        color: white;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
+    .btn-select-customer:hover {
+        transform: translateY(-1px);
+    }
+    
+    .customer-info-display {
+        background: #f0fdf4;
+        border-radius: 10px;
+        padding: 12px 15px;
+        margin: 0 15px 15px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .customer-info-text {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .customer-info-text i {
+        font-size: 20px;
+        color: #28a745;
+    }
+    
+    .customer-name-display {
+        font-weight: 600;
+        color: #166534;
+    }
+    
+    .customer-phone-display {
+        font-size: 12px;
+        color: #4b5563;
+    }
+    
+    .customer-purchases {
+        font-size: 11px;
+        background: #dcfce7;
+        padding: 2px 8px;
+        border-radius: 20px;
+    }
+    
+    .remove-customer-btn {
+        background: #fee2e2;
+        color: #dc3545;
+        border: none;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        cursor: pointer;
+    }
+    
+    .manual-customer-input {
+        padding: 0 15px 15px 15px;
     }
     
     /* Payment Section */
@@ -296,11 +427,6 @@
         cursor: not-allowed;
     }
     
-    .checkout-btn.loading {
-        opacity: 0.7;
-        pointer-events: none;
-    }
-    
     /* Receipt Modal */
     .receipt-content {
         font-family: monospace;
@@ -312,15 +438,36 @@
         margin: 5px 0;
     }
     
-    /* Barcode scanner active effect */
+    /* Customer Modal */
+    .customer-list-modal {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .customer-item-modal {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eef2f7;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .customer-item-modal:hover {
+        background: #f8fafc;
+    }
+    
+    .quick-add-section {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+    
     .barcode-active {
         border-color: #4f9eff !important;
         box-shadow: 0 0 0 3px rgba(79, 158, 255, 0.2) !important;
-    }
-    
-    .loading-products {
-        text-align: center;
-        padding: 40px;
     }
     
     .loading-spinner {
@@ -337,7 +484,6 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Toast */
     .toast-container {
         position: fixed;
         bottom: 20px;
@@ -356,26 +502,21 @@
     .toast.success { border-left-color: #28a745; }
     .toast.error { border-left-color: #dc3545; }
     .toast.warning { border-left-color: #ffc107; }
-    .toast.info { border-left-color: #4f9eff; }
     
     @media (max-width: 768px) {
         .cart-item {
             flex-wrap: wrap;
         }
-        
-        .cart-item-total {
-            min-width: auto;
+        .customer-info-text {
+            flex-direction: column;
+            align-items: flex-start;
         }
-        
-        .toast-container {
-            bottom: 10px;
-            right: 10px;
-            left: 10px;
+        .product-result-item {
+            flex-wrap: wrap;
         }
-        
-        .toast {
-            width: auto;
-            min-width: auto;
+        .product-thumb {
+            width: 40px;
+            height: 40px;
         }
     }
 </style>
@@ -401,35 +542,53 @@
                 <div class="search-header">
                     <h6><i class="fas fa-search"></i> Search Products</h6>
                 </div>
-                <div class="card-body">
-                    <div class="product-search-input">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="productSearch" placeholder="Search by product name or category..." autocomplete="off">
-                    </div>
-                    <div class="product-search-input barcode-input mt-2">
-                        <i class="fas fa-barcode"></i>
-                        <input type="text" id="barcodeInput" placeholder="Scan or enter Product Code" autocomplete="off">
-                    </div>
-                    <div class="product-results mt-3" id="productResults">
-                        <div class="loading-products">
-                            <div class="loading-spinner"></div>
-                            <p class="mt-2">Loading products...</p>
-                        </div>
+                <div class="product-search-input">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="productSearch" placeholder="Search by name, code, IMEI, or Serial..." autocomplete="off">
+                </div>
+                <div class="product-search-input barcode-input">
+                    <i class="fas fa-barcode"></i>
+                    <input type="text" id="barcodeInput" placeholder="Scan or enter Product Code" autocomplete="off">
+                </div>
+                <div class="product-results" id="productResults">
+                    <div class="text-center py-4">
+                        <div class="loading-spinner"></div>
+                        <p class="mt-2">Loading products...</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Customer Information -->
+            <!-- Customer Information with Selection -->
             <div class="customer-section">
                 <div class="customer-header">
                     <h6><i class="fas fa-user"></i> Customer Information</h6>
+                    <button class="btn-select-customer" onclick="openCustomerModal()">
+                        <i class="fas fa-users"></i> Select Customer
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8 mb-2">
-                            <input type="text" id="customerName" class="form-control" placeholder="Customer Name">
+                
+                <!-- Selected Customer Display -->
+                <div id="selectedCustomerDisplay" style="display: none;" class="customer-info-display">
+                    <div class="customer-info-text">
+                        <i class="fas fa-user-circle"></i>
+                        <div>
+                            <span class="customer-name-display" id="displayCustomerName">-</span>
+                            <span class="customer-phone-display" id="displayCustomerPhone"></span>
+                            <div><span class="customer-purchases" id="displayCustomerPurchases">0 purchases</span></div>
                         </div>
-                        <div class="col-md-4 mb-2">
+                    </div>
+                    <button class="remove-customer-btn" onclick="clearSelectedCustomer()">
+                        <i class="fas fa-times"></i> Remove
+                    </button>
+                </div>
+                
+                <!-- Manual Customer Input -->
+                <div class="manual-customer-input">
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <input type="text" id="customerName" class="form-control" placeholder="Customer Name (Walk-in)">
+                        </div>
+                        <div class="col-md-4">
                             <input type="text" id="customerPhone" class="form-control" placeholder="Phone">
                         </div>
                     </div>
@@ -468,13 +627,13 @@
             <div class="payment-section">
                 <div class="payment-body">
                     <div class="payment-methods">
-                        <button class="payment-method-btn active" onclick="selectPaymentMethod('cash')">
+                        <button class="payment-method-btn active" onclick="selectPaymentMethod('cash', this)">
                             <i class="fas fa-money-bill"></i> Cash
                         </button>
-                        <button class="payment-method-btn" onclick="selectPaymentMethod('card')">
+                        <button class="payment-method-btn" onclick="selectPaymentMethod('card', this)">
                             <i class="fas fa-credit-card"></i> Card
                         </button>
-                        <button class="payment-method-btn" onclick="selectPaymentMethod('gcash')">
+                        <button class="payment-method-btn" onclick="selectPaymentMethod('gcash', this)">
                             <i class="fas fa-mobile-alt"></i> GCash
                         </button>
                     </div>
@@ -497,10 +656,6 @@
                             <label class="form-label">Card Number</label>
                             <input type="text" class="form-control" placeholder="**** **** **** ****">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Card Holder Name</label>
-                            <input type="text" class="form-control" placeholder="Name on card">
-                        </div>
                     </div>
                     
                     <div id="gcashPaymentDiv" style="display: none;">
@@ -508,16 +663,68 @@
                             <label class="form-label">GCash Number</label>
                             <input type="text" class="form-control" placeholder="09XX XXX XXXX">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Reference Number</label>
-                            <input type="text" class="form-control" placeholder="Enter reference number">
-                        </div>
                     </div>
                     
                     <button class="checkout-btn mt-3" id="checkoutBtn" onclick="processCheckout()" disabled>
                         <i class="fas fa-check-circle"></i> Complete Transaction
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Selection Modal -->
+<div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1f2937, #2d3a4a); color: white;">
+                <h5 class="modal-title"><i class="fas fa-users"></i> Select Customer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <!-- Quick Add Customer -->
+                <div class="quick-add-section">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <input type="text" id="newCustomerName" class="form-control" placeholder="New customer name *">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="tel" id="newCustomerPhone" class="form-control" placeholder="Phone">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="email" id="newCustomerEmail" class="form-control" placeholder="Email">
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-primary w-100" onclick="quickAddCustomer()">
+                                <i class="fas fa-plus"></i> 
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <input type="text" id="newCustomerAddress" class="form-control" placeholder="Address">
+                    </div>
+                </div>
+                
+                <!-- Search Existing Customers -->
+                <div class="search-box mb-3" style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                    <input type="text" id="customerSearch" class="form-control" placeholder="Search existing customers..." style="padding-left: 35px;" onkeyup="filterCustomerList()">
+                </div>
+                
+                <!-- Customer List -->
+                <div class="customer-list-modal" id="customerListModal">
+                    <div class="text-center py-4">
+                        <div class="loading-spinner"></div>
+                        <p class="mt-2">Loading customers...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="useWalkInCustomer()">
+                    <i class="fas fa-walking"></i> Use Walk-in Customer
+                </button>
             </div>
         </div>
     </div>
@@ -531,8 +738,7 @@
                 <h5 class="modal-title">Receipt</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="receiptContent">
-            </div>
+            <div class="modal-body" id="receiptContent"></div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="printReceipt()">
                     <i class="fas fa-print"></i> Print
@@ -545,96 +751,200 @@
 
 <script>
 // API Configuration
-const API_URL = '/SIDJAN/datafetcher/stockindata.php';
+const API_URL = '/POS/datafetcher/stockindata.php';
+const CUSTOMER_API_URL = '/POS/datafetcher/addcustomerdata.php';
+const PRODUCT_API_URL = '/POS/datafetcher/productdata.php';
 
-// Cart array
+// Global variables
 let cart = [];
 let selectedPaymentMethod = 'cash';
 let products = [];
+let allCustomers = [];
+let selectedCustomer = null;
 
 // ============================================
 // API CALLS
 // ============================================
 
 async function loadProducts() {
-    const container = document.getElementById('productResults');
-    
     try {
-        console.log('Fetching products from API...');
-        const response = await fetch(`${API_URL}?action=getProducts`);
+        // Use product_api.php for products with images, IMEI, Serial
+        const response = await fetch(`${PRODUCT_API_URL}?action=getProducts`);
         const data = await response.json();
-        
-        console.log('API Response:', data);
         
         if (data.success && data.data && data.data.length > 0) {
             products = data.data;
             displayProductResults(products);
-            showToast(`${products.length} products loaded successfully`, 'success');
         } else {
-            // Fallback to sample data
-            console.log('No products from API, using sample data');
-            products = getSampleProducts();
-            displayProductResults(products);
-            showToast('Using sample products (database connection issue)', 'warning');
+            showToast('No products found', 'warning');
+            document.getElementById('productResults').innerHTML = '<div class="text-center py-4 text-muted">No products found</div>';
         }
     } catch (error) {
         console.error('Error loading products:', error);
-        products = getSampleProducts();
-        displayProductResults(products);
-        showToast('Using sample products - API connection failed', 'error');
+        showToast('Failed to load products', 'error');
     }
 }
 
-function getSampleProducts() {
-    return [
-        { ProductID: '1', ProductCode: 'PH-IP14P', ProductName: 'iPhone 14 Pro', Category: 'Mobile Phones', Brand: 'Apple', CurrentStock: 10, SellingPrice: 69990 },
-        { ProductID: '2', ProductCode: 'PH-SS24', ProductName: 'Samsung Galaxy S24', Category: 'Mobile Phones', Brand: 'Samsung', CurrentStock: 8, SellingPrice: 64990 },
-        { ProductID: '3', ProductCode: 'AC-AIRP', ProductName: 'AirPods Pro', Category: 'Accessories', Brand: 'Apple', CurrentStock: 25, SellingPrice: 18990 },
-        { ProductID: '4', ProductCode: 'AC-BUDS2', ProductName: 'Samsung Buds2', Category: 'Accessories', Brand: 'Samsung', CurrentStock: 20, SellingPrice: 8990 },
-        { ProductID: '5', ProductCode: 'TB-IPAD', ProductName: 'iPad Air', Category: 'Tablets', Brand: 'Apple', CurrentStock: 5, SellingPrice: 45990 },
-        { ProductID: '6', ProductCode: 'PH-GP7', ProductName: 'Google Pixel 7', Category: 'Mobile Phones', Brand: 'Google', CurrentStock: 3, SellingPrice: 49990 },
-        { ProductID: '7', ProductCode: 'AC-CH25', ProductName: 'Fast Charger 25W', Category: 'Accessories', Brand: 'Samsung', CurrentStock: 50, SellingPrice: 1290 },
-        { ProductID: '8', ProductCode: 'AC-GLASS', ProductName: 'Tempered Glass', Category: 'Accessories', Brand: 'Various', CurrentStock: 100, SellingPrice: 299 }
-    ];
+async function loadCustomers() {
+    try {
+        const response = await fetch(`${CUSTOMER_API_URL}?action=getCustomers`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+            allCustomers = data.data;
+            displayCustomerList();
+        }
+    } catch (error) {
+        console.error('Error loading customers:', error);
+    }
+}
+
+async function quickAddCustomer() {
+    const customerName = document.getElementById('newCustomerName').value.trim();
+    if (!customerName) {
+        showToast('Please enter customer name', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${CUSTOMER_API_URL}?action=addCustomer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_name: customerName,
+                phone: document.getElementById('newCustomerPhone').value.trim(),
+                email: document.getElementById('newCustomerEmail').value.trim(),
+                address: document.getElementById('newCustomerAddress').value.trim()
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Customer added successfully', 'success');
+            document.getElementById('newCustomerName').value = '';
+            document.getElementById('newCustomerPhone').value = '';
+            document.getElementById('newCustomerEmail').value = '';
+            document.getElementById('newCustomerAddress').value = '';
+            await loadCustomers();
+        } else {
+            showToast(result.message || 'Failed to add customer', 'error');
+        }
+    } catch (error) {
+        showToast('Network error', 'error');
+    }
 }
 
 // ============================================
-// HELPER FUNCTION
+// CUSTOMER SELECTION
 // ============================================
 
-function formatNumber(value) {
-    if (value === undefined || value === null || isNaN(value)) return '0.00';
-    return parseFloat(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function openCustomerModal() {
+    loadCustomers();
+    new bootstrap.Modal(document.getElementById('customerModal')).show();
+}
+
+function selectCustomer(customer) {
+    selectedCustomer = customer;
+    
+    document.getElementById('displayCustomerName').innerText = customer.CustomerName;
+    document.getElementById('displayCustomerPhone').innerHTML = customer.Phone ? ` • ${customer.Phone}` : '';
+    document.getElementById('displayCustomerPurchases').innerHTML = `${customer.TotalPurchases || 0} purchases • ₱${formatNumber(customer.TotalSpent || 0)} spent`;
+    document.getElementById('selectedCustomerDisplay').style.display = 'flex';
+    document.getElementById('customerName').value = customer.CustomerName;
+    document.getElementById('customerPhone').value = customer.Phone || '';
+    
+    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+    showToast(`Customer selected: ${customer.CustomerName}`, 'success');
+}
+
+function clearSelectedCustomer() {
+    selectedCustomer = null;
+    document.getElementById('selectedCustomerDisplay').style.display = 'none';
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
+    showToast('Customer removed', 'info');
+}
+
+function useWalkInCustomer() {
+    selectedCustomer = null;
+    document.getElementById('selectedCustomerDisplay').style.display = 'none';
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
+    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+    showToast('Using walk-in customer', 'info');
+}
+
+function filterCustomerList() {
+    const searchTerm = document.getElementById('customerSearch').value.toLowerCase();
+    const filtered = allCustomers.filter(c => 
+        c.CustomerName.toLowerCase().includes(searchTerm) ||
+        (c.Phone && c.Phone.includes(searchTerm)) ||
+        (c.Email && c.Email.toLowerCase().includes(searchTerm))
+    );
+    displayCustomerList(filtered);
+}
+
+function displayCustomerList(customers = null) {
+    const list = customers || allCustomers;
+    const container = document.getElementById('customerListModal');
+    
+    if (!list || list.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted">No customers found</div>';
+        return;
+    }
+    
+    container.innerHTML = list.map(c => `
+        <div class="customer-item-modal" onclick='selectCustomer(${JSON.stringify(c)})'>
+            <div>
+                <div class="fw-bold">${escapeHtml(c.CustomerName)}</div>
+                <div class="small text-muted">
+                    ${c.Phone ? `<i class="fas fa-phone"></i> ${c.Phone}` : ''}
+                    ${c.Email ? `<i class="fas fa-envelope ms-2"></i> ${c.Email}` : ''}
+                </div>
+                <div class="small mt-1">
+                    ${c.TotalPurchases || 0} purchases • ₱${formatNumber(c.TotalSpent || 0)} spent
+                </div>
+            </div>
+            <i class="fas fa-chevron-right text-muted"></i>
+        </div>
+    `).join('');
 }
 
 // ============================================
-// DISPLAY PRODUCTS
+// DISPLAY PRODUCTS WITH IMAGES, IMEI, SERIAL
 // ============================================
 
 function displayProductResults(productsList) {
     const container = document.getElementById('productResults');
     
     if (!productsList || productsList.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-4 text-muted">
-                <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
-                <p>No products found</p>
-                <p class="small">Add products to inventory first</p>
-            </div>
-        `;
+        container.innerHTML = '<div class="text-center py-4 text-muted">No products found</div>';
         return;
     }
     
     container.innerHTML = productsList.map(p => {
-        const price = parseFloat(p.SellingPrice) || 0;
+        const imageHtml = p.ProductImagePath 
+            ? `<img src="${p.ProductImagePath}" alt="${escapeHtml(p.ProductName)}">`
+            : `<i class="fas fa-box"></i>`;
+        
+        const stockClass = p.CurrentStock < 10 ? 'text-danger' : 'text-success';
+        
         return `
             <div class="product-result-item" onclick='addToCart(${JSON.stringify(p)})'>
-                <div>
+                <div class="product-thumb">
+                    ${imageHtml}
+                </div>
+                <div class="product-info">
                     <div class="product-result-name">${escapeHtml(p.ProductName)}</div>
                     <div class="product-result-code">Code: ${p.ProductCode || 'N/A'}</div>
-                    <div class="product-result-stock">Stock: ${p.CurrentStock || 0} units</div>
+                    ${p.IMEINumber ? `<div class="product-result-imei"><i class="fas fa-qrcode"></i> IMEI: ${p.IMEINumber}</div>` : ''}
+                    ${p.SerialNumber ? `<div class="product-result-serial"><i class="fas fa-barcode"></i> Serial: ${p.SerialNumber}</div>` : ''}
+                    <div class="product-result-stock ${stockClass}">
+                        <i class="fas fa-boxes"></i> Stock: ${p.CurrentStock || 0} units
+                    </div>
                 </div>
-                <div class="product-result-price">₱${formatNumber(price)}</div>
+                <div class="product-result-price">₱${formatNumber(p.SellingPrice)}</div>
             </div>
         `;
     }).join('');
@@ -648,36 +958,25 @@ document.getElementById('barcodeInput').addEventListener('keypress', function(e)
     if (e.key === 'Enter') {
         const barcode = this.value.trim();
         if (barcode) {
-            findProductByCode(barcode);
-            this.value = '';
-            this.classList.remove('barcode-active');
+            // Search by product code, IMEI, or Serial
+            const product = products.find(p => 
+                (p.ProductCode && p.ProductCode.toLowerCase() === barcode.toLowerCase()) ||
+                (p.IMEINumber && p.IMEINumber === barcode) ||
+                (p.SerialNumber && p.SerialNumber === barcode)
+            );
+            if (product) {
+                addToCart(product);
+                this.value = '';
+                showToast(`Added: ${product.ProductName}`, 'success');
+            } else {
+                showToast('Product not found', 'error');
+            }
         }
     }
 });
 
-document.getElementById('barcodeInput').addEventListener('focus', function() {
-    this.classList.add('barcode-active');
-});
-
-document.getElementById('barcodeInput').addEventListener('blur', function() {
-    this.classList.remove('barcode-active');
-});
-
-function findProductByCode(productCode) {
-    const product = products.find(p => 
-        p.ProductCode && p.ProductCode.toLowerCase() === productCode.toLowerCase()
-    );
-    
-    if (product) {
-        addToCart(product);
-        showToast(`Product found: ${product.ProductName}`, 'success');
-    } else {
-        showToast('Product not found. Check barcode and try again.', 'error');
-    }
-}
-
 // ============================================
-// SEARCH PRODUCTS
+// SEARCH PRODUCTS (includes IMEI and Serial)
 // ============================================
 
 document.getElementById('productSearch').addEventListener('input', function() {
@@ -691,78 +990,45 @@ document.getElementById('productSearch').addEventListener('input', function() {
         (p.ProductName && p.ProductName.toLowerCase().includes(searchTerm)) ||
         (p.Category && p.Category.toLowerCase().includes(searchTerm)) ||
         (p.Brand && p.Brand.toLowerCase().includes(searchTerm)) ||
-        (p.ProductCode && p.ProductCode.toLowerCase().includes(searchTerm))
+        (p.ProductCode && p.ProductCode.toLowerCase().includes(searchTerm)) ||
+        (p.IMEINumber && p.IMEINumber.toLowerCase().includes(searchTerm)) ||
+        (p.SerialNumber && p.SerialNumber.toLowerCase().includes(searchTerm))
     );
     
     displayProductResults(filtered);
 });
 
 // ============================================
-// CART FUNCTIONS
+// CART FUNCTIONS (includes IMEI/Serial in cart)
 // ============================================
 
 function addToCart(product) {
-    // Ensure price is a number
     const productPrice = parseFloat(product.SellingPrice) || 0;
-    
     const existingItem = cart.find(item => item.id === product.ProductID);
     
     if (existingItem) {
         if (existingItem.quantity + 1 > (product.CurrentStock || 999)) {
-            showToast(`Only ${product.CurrentStock} units available in stock`, 'warning');
+            showToast(`Only ${product.CurrentStock} units available`, 'warning');
             return;
         }
         existingItem.quantity++;
         existingItem.total = existingItem.quantity * existingItem.price;
     } else {
-        if (1 > (product.CurrentStock || 999)) {
-            showToast('Product out of stock', 'warning');
-            return;
-        }
         cart.push({
             id: product.ProductID,
             name: product.ProductName,
             productCode: product.ProductCode,
             price: productPrice,
             quantity: 1,
-            total: productPrice
+            total: productPrice,
+            imei: product.IMEINumber,
+            serial: product.SerialNumber,
+            image: product.ProductImagePath
         });
     }
     
     updateCartDisplay();
     showToast(`${product.ProductName} added to cart`, 'success');
-}
-
-function updateQuantity(id, change) {
-    const item = cart.find(i => i.id === id);
-    if (item) {
-        const newQuantity = item.quantity + change;
-        if (newQuantity <= 0) {
-            removeFromCart(id);
-        } else {
-            item.quantity = newQuantity;
-            item.total = item.quantity * item.price;
-            updateCartDisplay();
-        }
-    }
-}
-
-function removeFromCart(id) {
-    const item = cart.find(i => i.id === id);
-    if (item) {
-        cart = cart.filter(item => item.id !== id);
-        updateCartDisplay();
-        showToast(`${item.name} removed from cart`, 'info');
-    }
-}
-
-function clearCart() {
-    if (cart.length === 0) return;
-    if (confirm('Clear entire cart?')) {
-        cart = [];
-        updateCartDisplay();
-        showToast('Cart cleared', 'info');
-    }
 }
 
 function updateCartDisplay() {
@@ -790,6 +1056,8 @@ function updateCartDisplay() {
             <div class="cart-item-info">
                 <div class="cart-item-name">${escapeHtml(item.name)}</div>
                 <div class="cart-item-code">Code: ${item.productCode || 'N/A'}</div>
+                ${item.imei ? `<div class="cart-item-imei"><i class="fas fa-qrcode"></i> IMEI: ${item.imei}</div>` : ''}
+                ${item.serial ? `<div class="cart-item-serial"><i class="fas fa-barcode"></i> Serial: ${item.serial}</div>` : ''}
                 <div class="cart-item-price">₱${formatNumber(item.price)}</div>
             </div>
             <div class="cart-item-qty">
@@ -804,29 +1072,55 @@ function updateCartDisplay() {
         </div>
     `).join('');
     
-    // Calculate total (products already include tax)
     const total = cart.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
-    
     document.getElementById('totalAmount').innerHTML = `₱${formatNumber(total)}`;
     
     cartSummary.style.display = 'block';
     clearBtn.style.display = 'inline-block';
     checkoutBtn.disabled = false;
-    
     calculateChange();
+}
+
+function updateQuantity(id, change) {
+    const item = cart.find(i => i.id === id);
+    if (item) {
+        const newQuantity = item.quantity + change;
+        if (newQuantity <= 0) {
+            removeFromCart(id);
+        } else {
+            item.quantity = newQuantity;
+            item.total = item.quantity * item.price;
+            updateCartDisplay();
+        }
+    }
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(item => item.id !== id);
+    updateCartDisplay();
+    showToast('Item removed from cart', 'info');
+}
+
+function clearCart() {
+    if (cart.length === 0) return;
+    if (confirm('Clear entire cart?')) {
+        cart = [];
+        updateCartDisplay();
+        showToast('Cart cleared', 'info');
+    }
 }
 
 // ============================================
 // PAYMENT METHODS
 // ============================================
 
-function selectPaymentMethod(method) {
+function selectPaymentMethod(method, btn) {
     selectedPaymentMethod = method;
     
-    document.querySelectorAll('.payment-method-btn').forEach(btn => {
-        btn.classList.remove('active');
+    document.querySelectorAll('.payment-method-btn').forEach(b => {
+        b.classList.remove('active');
     });
-    event.target.classList.add('active');
+    btn.classList.add('active');
     
     document.getElementById('cashPaymentDiv').style.display = method === 'cash' ? 'block' : 'none';
     document.getElementById('cardPaymentDiv').style.display = method === 'card' ? 'block' : 'none';
@@ -845,7 +1139,7 @@ function calculateChange() {
 }
 
 // ============================================
-// CHECKOUT & SAVE TRANSACTION
+// CHECKOUT
 // ============================================
 
 async function processCheckout() {
@@ -865,31 +1159,23 @@ async function processCheckout() {
         }
     }
     
-    // Disable checkout button and show loading
     const checkoutBtn = document.getElementById('checkoutBtn');
     checkoutBtn.disabled = true;
     checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    checkoutBtn.classList.add('loading');
     
-    // Save transaction to database
     const success = await saveTransaction();
     
     if (success) {
         generateReceipt();
-        // Clear cart after successful transaction
         cart = [];
         updateCartDisplay();
-        document.getElementById('customerName').value = '';
-        document.getElementById('customerPhone').value = '';
         document.getElementById('amountReceived').value = '';
         document.getElementById('productSearch').value = '';
         document.getElementById('barcodeInput').value = '';
     }
     
-    // Reset button
     checkoutBtn.disabled = false;
     checkoutBtn.innerHTML = '<i class="fas fa-check-circle"></i> Complete Transaction';
-    checkoutBtn.classList.remove('loading');
 }
 
 async function saveTransaction() {
@@ -912,11 +1198,11 @@ async function saveTransaction() {
             name: item.name,
             quantity: item.quantity,
             price: item.price,
-            total: item.total
+            total: item.total,
+            imei: item.imei || '',
+            serial: item.serial || ''
         }))
     };
-    
-    console.log('Saving transaction:', transactionData);
     
     try {
         const response = await fetch(`${API_URL}?action=saveTransaction`, {
@@ -926,18 +1212,16 @@ async function saveTransaction() {
         });
         
         const result = await response.json();
-        console.log('Save transaction response:', result);
         
         if (result.success) {
-            showToast('Transaction saved successfully!', 'success');
+            showToast('Transaction completed!', 'success');
             return true;
         } else {
             showToast(result.message || 'Failed to save transaction', 'error');
             return false;
         }
     } catch (error) {
-        console.error('Error saving transaction:', error);
-        showToast('Network error. Please try again.', 'error');
+        showToast('Network error', 'error');
         return false;
     }
 }
@@ -948,43 +1232,39 @@ async function saveTransaction() {
 
 function generateReceipt() {
     const now = new Date();
-    const receiptNumber = 'INV-' + now.getFullYear() + (now.getMonth() + 1) + now.getDate() + now.getTime();
+    const receiptNumber = 'INV-' + now.getTime();
     const customerName = document.getElementById('customerName').value || 'Walk-in Customer';
     const total = parseFloat(document.getElementById('totalAmount').innerText.replace('₱', '').replace(/,/g, '')) || 0;
-    const vatAmount = total * 0.12 / 1.12; // VAT exclusive calculation
     
-    let receiptHTML = `
+    let html = `
         <div class="receipt-content">
-            <div class="receipt-line"><strong>SIDJAN ELECTRONIC PRODUCTS TRADING</strong></div>
+            <div class="receipt-line"><strong>SIDJAN ELECTRONIC</strong></div>
             <div class="receipt-line">${'-'.repeat(30)}</div>
             <div class="receipt-line">${now.toLocaleString()}</div>
             <div class="receipt-line">Receipt: ${receiptNumber}</div>
-            <div class="receipt-line">Cashier: ${getCashierName()}</div>
             <div class="receipt-line">Customer: ${escapeHtml(customerName)}</div>
             <div class="receipt-line">${'-'.repeat(30)}</div>
     `;
     
     cart.forEach(item => {
-        receiptHTML += `
+        html += `
             <div class="d-flex justify-content-between">
                 <span>${escapeHtml(item.name)}</span>
                 <span>₱${formatNumber(item.total)}</span>
             </div>
             <div class="d-flex justify-content-between small text-muted">
                 <span>  x${item.quantity} @ ₱${formatNumber(item.price)}</span>
-                <span>Code: ${item.productCode || 'N/A'}</span>
             </div>
+            ${item.imei ? `<div class="small text-muted">IMEI: ${item.imei}</div>` : ''}
+            ${item.serial ? `<div class="small text-muted">Serial: ${item.serial}</div>` : ''}
         `;
     });
     
-    receiptHTML += `
+    html += `
             <div class="receipt-line">${'-'.repeat(30)}</div>
             <div class="d-flex justify-content-between">
                 <strong>TOTAL:</strong>
                 <strong>₱${formatNumber(total)}</strong>
-            </div>
-            <div class="tax-info text-center small">
-                (VAT Inclusive - VAT Amount: ₱${formatNumber(vatAmount)})
             </div>
             <div class="receipt-line">${'-'.repeat(30)}</div>
             <div class="receipt-line">Payment: ${selectedPaymentMethod.toUpperCase()}</div>
@@ -993,7 +1273,7 @@ function generateReceipt() {
     if (selectedPaymentMethod === 'cash') {
         const received = parseFloat(document.getElementById('amountReceived').value) || 0;
         const change = received - total;
-        receiptHTML += `
+        html += `
             <div class="d-flex justify-content-between">
                 <span>Amount Received:</span>
                 <span>₱${formatNumber(received)}</span>
@@ -1005,55 +1285,39 @@ function generateReceipt() {
         `;
     }
     
-    receiptHTML += `
+    html += `
             <div class="receipt-line">${'-'.repeat(30)}</div>
             <div class="receipt-line">Thank you for your purchase!</div>
             <div class="receipt-line">Please come again</div>
-            <div class="receipt-line">${'-'.repeat(30)}</div>
-            <div class="receipt-line small">For inquiries: 0912-345-6789</div>
         </div>
     `;
     
-    document.getElementById('receiptContent').innerHTML = receiptHTML;
-    
-    // Show receipt modal
-    const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
-    modal.show();
-}
-
-function getCashierName() {
-    return '<?php echo $_SESSION['NAME'] ?? 'Admin'; ?>';
+    document.getElementById('receiptContent').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('receiptModal')).show();
 }
 
 function printReceipt() {
-    const receiptContent = document.getElementById('receiptContent').innerHTML;
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Receipt</title>
-            <style>
-                body { font-family: monospace; padding: 20px; }
-                .receipt-content { max-width: 300px; margin: 0 auto; }
-                .receipt-line { text-align: center; margin: 5px 0; }
-                .d-flex { display: flex; justify-content: space-between; }
-                .small { font-size: 10px; }
-                .text-muted { color: #6c757d; }
-                .tax-info { font-size: 9px; color: #6c757d; margin-top: 5px; }
-            </style>
-        </head>
-        <body>
-            <div class="receipt-content">${receiptContent}</div>
-            <script>window.print();<\/script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
+    const content = document.getElementById('receiptContent').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;padding:20px;}.receipt-content{max-width:300px;margin:0 auto;}.d-flex{display:flex;justify-content:space-between;}</style></head><body><div class="receipt-content">${content}</div><script>window.print();<\/script></body></html>`);
+    w.document.close();
 }
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
+
+function formatNumber(value) {
+    if (!value && value !== 0) return '0.00';
+    return parseFloat(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 function showToast(message, type) {
     let container = document.querySelector('.toast-container');
@@ -1065,47 +1329,22 @@ function showToast(message, type) {
     
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.setAttribute('role', 'alert');
-    toast.style.display = 'block';
-    toast.style.marginBottom = '10px';
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-    
     toast.innerHTML = `
         <div class="toast-header">
-            <i class="fas ${icons[type] || 'fa-info-circle'} me-2" style="color: ${type === 'success' ? '#28a745' : (type === 'error' ? '#dc3545' : '#ffc107')}"></i>
-            <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+            <strong class="me-auto">${type.toUpperCase()}</strong>
             <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body">
-            ${message}
-        </div>
+        <div class="toast-body">${message}</div>
     `;
     
     container.appendChild(toast);
     const bsToast = new bootstrap.Toast(toast, { delay: 3000, autohide: true });
     bsToast.show();
-    
-    toast.addEventListener('hidden.bs.toast', () => {
-        toast.remove();
-    });
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
 }
 
 function updateTime() {
-    const now = new Date();
-    document.getElementById('currentTime').innerHTML = now.toLocaleTimeString();
+    document.getElementById('currentTime').innerHTML = new Date().toLocaleTimeString();
 }
 
 // ============================================
@@ -1116,8 +1355,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadProducts();
     updateTime();
     setInterval(updateTime, 1000);
-    
-    // Focus on barcode input for scanning
     document.getElementById('barcodeInput').focus();
 });
 </script>

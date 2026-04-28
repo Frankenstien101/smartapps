@@ -5,6 +5,8 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
+include '../DB/dbcon.php';
+
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -14,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-try {
-    $conn = new PDO(
-        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-        "sa",
-        'bspi.@dm1n'
-    );
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-    exit();
-}
+//try {
+//    $conn = new PDO(
+//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
+//        "sa",
+//        'bspi.@dm1n'
+//    );
+//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+//} catch (PDOException $e) {
+//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
+//    exit();
+//}
 
 // Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
@@ -660,4 +662,6 @@ function logUserActivity($conn, $data, $currentUser) {
     
     echo json_encode(['success' => true, 'message' => 'Activity logged']);
 }
+
+
 ?>

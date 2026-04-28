@@ -1,5 +1,5 @@
 <?php
-// pages/dashboard.php - Dashboard with real backend data
+// pages/dashboard.php - Dashboard with real backend data and branch filtering
 ?>
 <style>
     .dashboard-stats {
@@ -50,7 +50,6 @@
         margin-top: 8px;
     }
     
-    /* Dashboard Cards */
     .dashboard-card {
         background: white;
         border-radius: 16px;
@@ -72,7 +71,6 @@
         padding: 20px;
     }
     
-    /* Activity Items */
     .activity-item {
         padding: 12px 0;
         border-bottom: 1px solid #eef2f7;
@@ -113,7 +111,6 @@
         color: #94a3b8;
     }
     
-    /* Low Stock Items */
     .low-stock-item {
         display: flex;
         justify-content: space-between;
@@ -143,7 +140,6 @@
         font-weight: 600;
     }
     
-    /* Loading Spinner */
     .loading-spinner {
         display: inline-block;
         width: 20px;
@@ -158,7 +154,6 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Refresh Button */
     .refresh-btn {
         background: transparent;
         border: 1px solid #e2e8f0;
@@ -178,7 +173,6 @@
         cursor: not-allowed;
     }
     
-    /* Chart containers */
     .chart-container {
         position: relative;
         min-height: 300px;
@@ -190,7 +184,6 @@
         height: auto;
     }
     
-    /* Responsive */
     @media (max-width: 768px) {
         .stat-value {
             font-size: 22px;
@@ -217,7 +210,6 @@
         }
     }
     
-    /* Toast */
     .toast-container {
         position: fixed;
         bottom: 20px;
@@ -240,7 +232,10 @@
 
 <div class="dashboard-container">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h4><i class="fas fa-chart-line"></i> Dashboard Overview</h4>
+        <div>
+            <h4><i class="fas fa-chart-line"></i> Dashboard Overview</h4>
+            <p class="text-muted mb-0">Branch: <strong><?php echo $_SESSION['branch_name'] ?? 'Main Branch'; ?></strong></p>
+        </div>
         <button class="refresh-btn" id="refreshBtn" onclick="refreshDashboard()">
             <i class="fas fa-sync-alt"></i> Refresh
         </button>
@@ -311,7 +306,7 @@
             </div>
         </div>
         
-        <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-4">
             <div class="dashboard-card">
                 <div class="card-header">
                     <i class="fas fa-chart-pie"></i> Product Distribution
@@ -424,53 +419,92 @@ async function apiCall(action, method = 'GET', data = null) {
 }
 
 async function loadDashboardStats() {
-    const result = await apiCall('getDashboardStats');
-    if (result.success && result.data) {
-        document.getElementById('totalProducts').innerText = result.data.TotalProducts || 0;
-        document.getElementById('totalStockValue').innerText = '₱' + (result.data.TotalStockValue || 0).toLocaleString();
-        document.getElementById('lowStockCount').innerText = result.data.LowStockCount || 0;
-        document.getElementById('totalUnitsInStock').innerText = result.data.TotalUnitsInStock || 0;
+    try {
+        const result = await apiCall('getDashboardStats');
+        console.log('Dashboard Stats:', result);
+        
+        if (result.success && result.data) {
+            document.getElementById('totalProducts').innerText = result.data.TotalProducts || 0;
+            document.getElementById('totalStockValue').innerHTML = '₱' + formatNumber(result.data.TotalStockValue);
+            document.getElementById('lowStockCount').innerText = result.data.LowStockCount || 0;
+            document.getElementById('totalUnitsInStock').innerText = result.data.TotalUnitsInStock || 0;
+        } else {
+            console.warn('Stats not loaded');
+            setDefaultStats();
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        setDefaultStats();
     }
 }
 
+function setDefaultStats() {
+    document.getElementById('totalProducts').innerText = '0';
+    document.getElementById('totalStockValue').innerHTML = '₱0.00';
+    document.getElementById('lowStockCount').innerText = '0';
+    document.getElementById('totalUnitsInStock').innerText = '0';
+}
+
 async function loadTodaySales() {
-    const result = await apiCall('getTodaySales');
-    if (result.success && result.data) {
-        document.getElementById('todaySales').innerText = '₱' + (result.data.TodaySales || 0).toLocaleString();
-        document.getElementById('todayTransactions').innerText = result.data.TransactionCount || 0;
+    try {
+        const result = await apiCall('getTodaySales');
+        console.log('Today Sales:', result);
+        
+        if (result.success && result.data) {
+            document.getElementById('todaySales').innerHTML = '₱' + formatNumber(result.data.TodaySales);
+            document.getElementById('todayTransactions').innerText = result.data.TransactionCount || 0;
+        } else {
+            document.getElementById('todaySales').innerHTML = '₱0.00';
+            document.getElementById('todayTransactions').innerText = '0';
+        }
+    } catch (error) {
+        console.error('Error loading today sales:', error);
+        document.getElementById('todaySales').innerHTML = '₱0.00';
+        document.getElementById('todayTransactions').innerText = '0';
     }
 }
 
 async function loadProducts() {
-    const result = await apiCall('getProducts');
-    if (result.success && result.data) {
-        products = result.data;
-        renderProductsTable(products);
+    try {
+        const result = await apiCall('getProducts');
+        console.log('Products:', result);
         
-        // Update product distribution chart
-        updateProductChart(products);
+        if (result.success && result.data) {
+            products = result.data;
+            renderProductsTable(products);
+            updateProductChart(products);
+        } else {
+            document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">No products found</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading products:', error);
     }
 }
 
 async function loadStockHistory() {
-    const result = await apiCall('getStockHistory', 'GET', null, { limit: 10 });
-    if (result.success && result.data) {
-        renderRecentActivity(result.data);
+    try {
+        const result = await apiCall('getStockHistory');
+        console.log('Stock History:', result);
+        
+        if (result.success && result.data) {
+            renderRecentActivity(result.data);
+        }
+    } catch (error) {
+        console.error('Error loading stock history:', error);
     }
 }
 
 async function loadLowStockProducts() {
-    const result = await apiCall('getLowStock');
-    if (result.success && result.data) {
-        lowStockItems = result.data;
-        renderLowStockItems(lowStockItems);
-    }
-}
-
-async function loadSalesReport() {
-    const result = await apiCall('getSalesReport');
-    if (result.success && result.data) {
-        updateSalesChart(result.data);
+    try {
+        const result = await apiCall('getLowStock');
+        console.log('Low Stock:', result);
+        
+        if (result.success && result.data) {
+            lowStockItems = result.data;
+            renderLowStockItems(lowStockItems);
+        }
+    } catch (error) {
+        console.error('Error loading low stock:', error);
     }
 }
 
@@ -486,26 +520,31 @@ function renderProductsTable(productsList) {
         return;
     }
     
-    tbody.innerHTML = productsList.slice(0, 15).map(product => `
-        <tr>
-            <td><span class="font-monospace small">${product.ProductCode || 'N/A'}</span></td>
-            <td><strong>${escapeHtml(product.ProductName)}</strong></td>
-            <td>${product.Category || '-'}</td>
-            <td>${product.Brand || '-'}</td>
-            <td>
-                <span class="${(product.CurrentStock || 0) < 10 ? 'text-danger fw-bold' : ''}">
-                    ${product.CurrentStock || 0} units
-                </span>
-                ${(product.CurrentStock || 0) < 10 ? '<span class="badge bg-danger ms-1">Low</span>' : ''}
-            </td>
-            <td>₱${(product.SellingPrice || 0).toLocaleString()}</td>
-            <td>
-                <a href="?page=stock-in" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-plus"></i> Restock
-                </a>
-            </td>
-        </table>
-    `).join('');
+    tbody.innerHTML = productsList.slice(0, 15).map(product => {
+        const currentStock = parseFloat(product.CurrentStock) || 0;
+        const sellingPrice = parseFloat(product.SellingPrice) || 0;
+        
+        return `
+            <tr>
+                <td><span class="font-monospace small">${product.ProductCode || 'N/A'}</span></td>
+                <td><strong>${escapeHtml(product.ProductName)}</strong></td>
+                <td>${product.Category || '-'}</td>
+                <td>${product.Brand || '-'}</td>
+                <td>
+                    <span class="${currentStock < 10 ? 'text-danger fw-bold' : ''}">
+                        ${currentStock} units
+                    </span>
+                    ${currentStock < 10 ? '<span class="badge bg-danger ms-1">Low</span>' : ''}
+                </td>
+                <td>₱${formatNumber(sellingPrice)}</td>
+                <td>
+                    <a href="?page=stock-in" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus"></i> Restock
+                    </a>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function renderRecentActivity(activities) {
@@ -525,7 +564,8 @@ function renderRecentActivity(activities) {
         const isStockIn = activity.QuantityAdded > 0;
         const icon = isStockIn ? 'fa-arrow-down' : 'fa-shopping-cart';
         const type = isStockIn ? 'stock-in' : 'sale';
-        const actionText = isStockIn ? `Added +${activity.QuantityAdded} units` : `Sold ${Math.abs(activity.QuantityAdded)} units`;
+        const qty = Math.abs(parseFloat(activity.QuantityAdded) || 0);
+        const actionText = isStockIn ? `Added +${qty} units` : `Sold ${qty} units`;
         
         return `
             <div class="activity-item">
@@ -536,8 +576,7 @@ function renderRecentActivity(activities) {
                     <div class="activity-title">${escapeHtml(activity.ProductName)}</div>
                     <div class="activity-time">
                         ${actionText} | 
-                        Old: ${activity.OldStock} → New: ${activity.NewStock} |
-                        ${activity.SupplierName ? 'Supplier: ' + escapeHtml(activity.SupplierName) : ''}
+                        Old: ${activity.OldStock || 0} → New: ${activity.NewStock || 0}
                     </div>
                 </div>
                 <div class="activity-time">
@@ -553,7 +592,7 @@ function renderLowStockItems(items) {
     const badge = document.getElementById('lowStockBadge');
     
     if (!items || items.length === 0) {
-        badge.innerText = '0';
+        if (badge) badge.innerText = '0';
         container.innerHTML = `
             <div class="text-center py-4 text-muted">
                 <i class="fas fa-check-circle fa-2x mb-2 d-block text-success"></i>
@@ -563,22 +602,25 @@ function renderLowStockItems(items) {
         return;
     }
     
-    badge.innerText = items.length;
-    container.innerHTML = items.map(item => `
-        <div class="low-stock-item">
-            <div>
-                <div class="low-stock-name">${escapeHtml(item.ProductName)}</div>
-                <div class="low-stock-code">Code: ${item.ProductCode || 'N/A'}</div>
-                <div class="small text-muted">Category: ${item.Category || '-'}</div>
+    if (badge) badge.innerText = items.length;
+    container.innerHTML = items.map(item => {
+        const stock = parseFloat(item.CurrentStock) || 0;
+        return `
+            <div class="low-stock-item">
+                <div>
+                    <div class="low-stock-name">${escapeHtml(item.ProductName)}</div>
+                    <div class="low-stock-code">Code: ${item.ProductCode || 'N/A'}</div>
+                    <div class="small text-muted">Category: ${item.Category || '-'}</div>
+                </div>
+                <div class="text-end">
+                    <div class="low-stock-qty">${stock} units left</div>
+                    <a href="?page=stock-in" class="btn btn-sm btn-danger mt-1">
+                        <i class="fas fa-plus"></i> Restock Now
+                    </a>
+                </div>
             </div>
-            <div class="text-end">
-                <div class="low-stock-qty">${item.CurrentStock} units left</div>
-                <a href="?page=stock-in" class="btn btn-sm btn-danger mt-1">
-                    <i class="fas fa-plus"></i> Restock Now
-                </a>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // ============================================
@@ -586,13 +628,14 @@ function renderLowStockItems(items) {
 // ============================================
 
 function initCharts() {
-    const salesCtx = document.getElementById('salesChart').getContext('2d');
-    const productCtx = document.getElementById('productChart').getContext('2d');
+    const salesCtx = document.getElementById('salesChart')?.getContext('2d');
+    const productCtx = document.getElementById('productChart')?.getContext('2d');
+    
+    if (!salesCtx || !productCtx) return;
     
     if (salesChart) salesChart.destroy();
     if (productChart) productChart.destroy();
     
-    // Sales Chart - will be updated with real data
     salesChart = new Chart(salesCtx, {
         type: 'line',
         data: {
@@ -616,16 +659,15 @@ function initCharts() {
             maintainAspectRatio: true,
             plugins: {
                 legend: { position: 'top', labels: { font: { size: 11 } } },
-                tooltip: { callbacks: { label: function(ctx) { return '₱' + ctx.raw.toLocaleString(); } } }
+                tooltip: { callbacks: { label: function(ctx) { return '₱' + formatNumber(ctx.raw); } } }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { callback: function(v) { return '₱' + v.toLocaleString(); }, font: { size: 10 } } },
+                y: { beginAtZero: true, ticks: { callback: function(v) { return '₱' + formatNumber(v); }, font: { size: 10 } } },
                 x: { ticks: { font: { size: 10 } } }
             }
         }
     });
     
-    // Product Chart - will be updated with real data
     productChart = new Chart(productCtx, {
         type: 'pie',
         data: {
@@ -646,33 +688,9 @@ function initCharts() {
     });
 }
 
-function updateSalesChart(salesData) {
-    if (!salesChart) return;
-    
-    // Process sales data for last 7 days
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const dailySales = new Array(7).fill(0);
-    
-    if (salesData && salesData.length > 0) {
-        salesData.forEach(day => {
-            // Find matching day
-            for (let i = 0; i < days.length; i++) {
-                if (day.Date && day.Date.includes(days[i]) || i === new Date().getDay()) {
-                    dailySales[i] = day.TotalSales || 0;
-                    break;
-                }
-            }
-        });
-    }
-    
-    salesChart.data.datasets[0].data = dailySales;
-    salesChart.update();
-}
-
 function updateProductChart(productsList) {
     if (!productChart) return;
     
-    // Count products by category
     const categoryCount = {};
     productsList.forEach(product => {
         const category = product.Category || 'Others';
@@ -700,8 +718,10 @@ function resizeCharts() {
 
 async function refreshDashboard() {
     const refreshBtn = document.getElementById('refreshBtn');
-    refreshBtn.disabled = true;
-    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    }
     
     try {
         await Promise.all([
@@ -709,16 +729,17 @@ async function refreshDashboard() {
             loadTodaySales(),
             loadProducts(),
             loadStockHistory(),
-            loadLowStockProducts(),
-            loadSalesReport()
+            loadLowStockProducts()
         ]);
         showToast('Dashboard refreshed successfully', 'success');
     } catch (error) {
         console.error('Refresh error:', error);
         showToast('Error refreshing dashboard', 'error');
     } finally {
-        refreshBtn.disabled = false;
-        refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+        }
     }
 }
 
@@ -726,28 +747,36 @@ async function refreshDashboard() {
 // HELPER FUNCTIONS
 // ============================================
 
+function formatNumber(value) {
+    if (value === null || value === undefined || isNaN(value)) return '0.00';
+    return parseFloat(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function showToast(message, type = 'success') {
     let container = document.querySelector('.toast-container');
     if (!container) {
         container = document.createElement('div');
-        container.className = 'toast-container';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '1100';
         document.body.appendChild(container);
     }
     
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.style.display = 'block';
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} show`;
+    toast.setAttribute('role', 'alert');
+    toast.style.minWidth = '250px';
     toast.style.marginBottom = '10px';
     
     const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle' };
     
     toast.innerHTML = `
-        <div class="toast-header">
-            <i class="fas ${icons[type] || 'fa-info-circle'} me-2"></i>
-            <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas ${icons[type] || 'fa-info-circle'} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body">${message}</div>
     `;
     
     container.appendChild(toast);
@@ -763,16 +792,17 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Watch sidebar toggle for chart resize
 function watchSidebarToggle() {
     const toggleBtn = document.getElementById('toggleSidebar');
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => setTimeout(resizeCharts, 300));
     }
     
-    const observer = new MutationObserver(() => setTimeout(resizeCharts, 300));
     const sidebar = document.getElementById('sidebar');
-    if (sidebar) observer.observe(sidebar, { attributes: true, attributeFilter: ['style'] });
+    if (sidebar) {
+        const observer = new MutationObserver(() => setTimeout(resizeCharts, 300));
+        observer.observe(sidebar, { attributes: true, attributeFilter: ['style'] });
+    }
 }
 
 // ============================================
@@ -783,8 +813,5 @@ document.addEventListener('DOMContentLoaded', function() {
     initCharts();
     refreshDashboard();
     watchSidebarToggle();
-    
-    // Auto refresh every 60 seconds
-    setInterval(refreshDashboard, 60000);
 });
 </script>

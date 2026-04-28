@@ -7,10 +7,16 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
+if ($_SESSION['Role'] != 'admin') {
+    header("Location: /SIDJAN/login.php");
+    exit();
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head> 
+<link rel="icon" type="image/x-icon" href="img/pos.ico">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
 <title>POS System</title>
@@ -61,7 +67,7 @@ if (!isset($_SESSION['username'])) {
         color: #cbd5e1;
         padding: 10px 15px;
         border-radius: 8px;
-        margin: 2px 0;
+        margin: 0px 0;
         transition: all 0.2s;
     }
     
@@ -235,8 +241,8 @@ if (!isset($_SESSION['username'])) {
         <img src="MainImg/logo.png" alt="Logo" onerror="this.src='https://placehold.co/80x80/4f9eff/white?text=SJ'">
         <h5>SIDJAN</h5>
         <p>Electronic Products Trading</p>
+        <p> <?php echo $_SESSION['branch_name'] ?? ''; ?></p>
     </div>
-    <hr style="border-color: rgba(255,255,255,0.1);">
     <ul class="nav flex-column">
         <li class="nav-item">
             <a class="nav-link" href="?page=dashboard">
@@ -251,9 +257,10 @@ if (!isset($_SESSION['username'])) {
                 <i class="fa fa-chevron-down float-end mt-1" style="font-size: 12px;"></i>
             </a>
             <div class="collapse submenu" id="menuSales">
-                <a class="nav-link" href="?page=trans">POS / New Sale</a>
+                <a class="nav-link" href="?page=pos">POS / New Sale</a>
                 <a class="nav-link" href="?page=installment">Installments</a>
                 <a class="nav-link" href="?page=sales-transaction">Sales Transactions</a>
+                <a class="nav-link" href="?page=addcustomer">Customers</a>
             </div>
         </li>
 
@@ -279,8 +286,8 @@ if (!isset($_SESSION['username'])) {
             <div class="collapse submenu" id="menuInventory">
                 <a class="nav-link" href="?page=stock-in">Stock In</a>
                 <a class="nav-link" href="?page=stock-out">Stock Out</a>
-                <a class="nav-link" href="?page=stock-transfer">Stock Transfer</a>
-                <a class="nav-link" href="?page=inventory-count">Inventory Count</a>
+                <a class="nav-link" href="?page=stocktransfer">Stock Transfer</a>
+                <a class="nav-link" href="?page=inventorycount">Inventory Count</a>
             </div>
         </li>
 
@@ -304,7 +311,6 @@ if (!isset($_SESSION['username'])) {
             </a>
             <div class="collapse submenu" id="menuUsers">
                 <a class="nav-link" href="?page=users">User List</a>
-                <a class="nav-link" href="?page=roles-permissions">Roles & Permissions</a>
             </div>
         </li>
 
@@ -315,26 +321,51 @@ if (!isset($_SESSION['username'])) {
                 <i class="fa fa-chevron-down float-end mt-1" style="font-size: 12px;"></i>
             </a>
             <div class="collapse submenu" id="menuReports">
-                <a class="nav-link" href="?page=sales-report">Sales Report</a>
-                <a class="nav-link" href="?page=inventory-report">Inventory Report</a>
-                <a class="nav-link" href="?page=profit-report">Profit Report</a>
+                <a class="nav-link" href="?page=salesreport">Sales Report</a>
+                <a class="nav-link" href="?page=installmentreport">Installment Report</a>
+                <a class="nav-link" href="?page=inventoryreport">Inventory Report</a>
+                <a class="nav-link" href="?page=stockinoutreport">Stock In/Out Report</a>
+                <a class="nav-link" href="?page=adminreport">Branch Report</a>
             </div>
         </li>
 
         <!-- SETTINGS -->
-        <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="collapse" href="#menuSettings" role="button" aria-expanded="false">
-                <i class="fa fa-cog"></i> Settings
-                <i class="fa fa-chevron-down float-end mt-1" style="font-size: 12px;"></i>
-            </a>
-            <div class="collapse submenu" id="menuSettings">
-                <a class="nav-link" href="?page=general-settings">General Settings</a>
-                <a class="nav-link" href="?page=system-setup">System Setup</a>
-                <a class="nav-link" style="color: #ef4444;" href="verify.php">Logout</a>
-            </div>
-        </li>
+        
     </ul>
+       <a class="nav-link text-danger" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+    <i class="fa fa-sign-out-alt"></i> Logout
+</a>
+        
 </div>
+
+
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #dc3545; color: white;">
+                <h5 class="modal-title"><i class="fas fa-sign-out-alt"></i> Confirm Logout</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="fas fa-question-circle fa-3x mb-3" style="color: #dc3545;"></i>
+                    <h5>Are you sure you want to logout?</h5>
+                    <p class="text-muted">You will be redirected to the login page.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <a href="/SIDJAN/verify.php" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg">

@@ -13,7 +13,7 @@ if (isset($_POST['login'])) {
         // Prepare and execute query
         $stmt = $conn->prepare("
             SELECT 
-                USERNAME,PASSWORDHASH,ROLE,FULLNAME
+                USERNAME,PASSWORDHASH,ROLE,FULLNAME,BranchName
             FROM users
                 
             WHERE USERNAME = :username
@@ -29,9 +29,15 @@ if (isset($_POST['login'])) {
                 $_SESSION['username'] = $user['USERNAME'];
                 $_SESSION['NAME'] = $user['FULLNAME'];
                 $_SESSION['Role'] = $user['ROLE']; 
+                $_SESSION['branch_name'] = $user['BranchName'];
 
+                if ($user['ROLE'] === 'admin') {
+                      header("Location: /SIDJAN/home.php");
+                } else {
+                       header("Location: /SIDJAN/user.php");
+                }
                 // Redirect to homepage
-                header("Location: /SIDJAN/home.php");
+             
                 exit();
             } else {
                 $error = "Invalid password.";
@@ -48,7 +54,7 @@ if (isset($_POST['login'])) {
 <!doctype html>
 <html lang="en">
   <head>
-    <link rel="icon" type="image/x-icon" href="MainImg/bscr.ico">
+    <link rel="icon" type="image/x-icon" href="img/pos.ico">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Login | POS</title>

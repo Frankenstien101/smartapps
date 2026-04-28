@@ -1,5 +1,5 @@
 <?php
-// pages/others.php - Others / Miscellaneous Products Page
+// pages/others.php - Others / Miscellaneous Products Page with Serialized Support
 ?>
 <style>
     .others-container {
@@ -155,6 +155,19 @@
         font-weight: 600;
     }
     
+    .badge-serialized {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: #4f9eff;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 600;
+        z-index: 1;
+    }
+    
     .product-image {
         background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
         height: 140px;
@@ -219,6 +232,39 @@
         border-radius: 10px;
     }
     
+    /* Units List */
+    .units-list {
+        margin-top: 10px;
+        border-top: 1px solid #eef2f7;
+        padding-top: 8px;
+        max-height: 120px;
+        overflow-y: auto;
+    }
+    
+    .unit-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #eef2f7;
+        font-size: 10px;
+    }
+    
+    .unit-number {
+        font-weight: 600;
+        color: #4f9eff;
+    }
+    
+    .unit-status {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 10px;
+    }
+    
+    .unit-status.available { background: #d4edda; color: #155724; }
+    .unit-status.sold { background: #f8d7da; color: #721c24; }
+    .unit-status.transferred { background: #fff3cd; color: #856404; }
+    
     /* Modal Styles */
     .modal-content {
         border-radius: 20px;
@@ -233,6 +279,20 @@
     .modal-header .btn-close {
         filter: brightness(0) invert(1);
     }
+    
+    /* Units Table */
+    .units-table {
+        font-size: 12px;
+    }
+    
+    .units-table th {
+        background: #f8fafc;
+        font-size: 11px;
+    }
+    
+    .badge-available { background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; }
+    .badge-sold { background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; }
+    .badge-transferred { background: #ffc107; color: #212529; padding: 2px 8px; border-radius: 12px; font-size: 10px; }
     
     /* Loading */
     .loading-spinner {
@@ -266,7 +326,7 @@
         position: fixed;
         bottom: 20px;
         right: 20px;
-        left: 20px;
+        left: auto;
         z-index: 1100;
     }
     
@@ -275,6 +335,7 @@
         border-radius: 12px;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
         border-left: 4px solid;
+        min-width: 250px;
     }
     
     .toast.success { border-left-color: #28a745; }
@@ -289,6 +350,11 @@
         .stats-row {
             grid-template-columns: repeat(2, 1fr);
         }
+        
+        .toast-container {
+            left: 20px;
+            right: 20px;
+        }
     }
 </style>
 
@@ -300,10 +366,6 @@
             <p class="text-muted mb-0">Manage other products and miscellaneous items</p>
         </div>
     </div>
-    
-    <button class="btn btn-primary btn-sm mb-3" style="width: 120px;" data-bs-toggle="modal" data-bs-target="#addModal">
-        <i class="fas fa-plus"></i> Add New
-    </button>
 
     <!-- Stats Cards -->
     <div class="stats-row">
@@ -399,8 +461,17 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Initial Stock</label>
-                    <input type="number" id="addInitialStock" class="form-control" value="0" min="0">
+                    <label class="form-label">Initial Stock *</label>
+                    <input type="number" id="addInitialStock" class="form-control" value="1" min="1">
+                    <small class="text-muted">For serialized items, you can add IMEI/Serial numbers below</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">IMEI Number (optional)</label>
+                    <input type="text" id="addIMEI" class="form-control" placeholder="IMEI (if applicable)">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Serial Number (optional)</label>
+                    <input type="text" id="addSerial" class="form-control" placeholder="Serial number">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Description / Notes</label>
@@ -415,105 +486,34 @@
     </div>
 </div>
 
-<!-- EDIT MODAL -->
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+<!-- UNITS MODAL (for viewing serialized items) -->
+<div class="modal fade" id="unitsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Item</h5>
+                <h5 class="modal-title"><i class="fas fa-list"></i> Units - <span id="unitsProductName"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="editProductId">
-                <div class="mb-3">
-                    <label class="form-label">Product Name *</label>
-                    <input type="text" id="editProductName" class="form-control">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Category *</label>
-                    <select id="editProductCategory" class="form-select">
-                        <option value="">Select Category</option>
-                        <option value="Supplies">Supplies</option>
-                        <option value="Rental">Rental</option>
-                        <option value="Electronic Parts">Electronic Parts</option>
-                        <option value="Tools">Tools</option>
-                        <option value="Gadgets">Gadgets</option>
-                        <option value="Others">Others</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Brand</label>
-                    <input type="text" id="editProductBrand" class="form-control">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Product Code</label>
-                    <input type="text" id="editProductCode" class="form-control">
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Cost Price (₱)</label>
-                        <input type="number" id="editCostPrice" class="form-control" step="0.01">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Selling Price (₱) *</label>
-                        <input type="number" id="editSellingPrice" class="form-control" step="0.01">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Current Stock</label>
-                    <input type="text" id="editCurrentStock" class="form-control" readonly style="background:#f8fafc;">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Description / Notes</label>
-                    <textarea id="editProductSpecs" class="form-control" rows="2"></textarea>
+                <div class="table-responsive">
+                    <table class="table table-sm units-table">
+                        <thead>
+                            <tr>
+                                <th>Unit #</th>
+                                <th>IMEI Number</th>
+                                <th>Serial Number</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unitsTableBody">
+                            <tr><td colspan="5" class="text-center">Loading...</td><\/tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" id="confirmEditBtn">Save Changes</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Stock In Modal -->
-<div class="modal fade" id="stockModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-arrow-down"></i> Add Stock</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="stockProductId">
-                <div class="mb-3">
-                    <label class="form-label">Product</label>
-                    <input type="text" id="stockProductName" class="form-control" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Current Stock</label>
-                    <input type="text" id="currentStockDisplay" class="form-control" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Quantity to Add *</label>
-                    <input type="number" id="addQuantity" class="form-control" min="1" placeholder="Enter quantity">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Cost Price (₱)</label>
-                    <input type="number" id="addStockCostPrice" class="form-control" step="0.01" placeholder="Cost per unit">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Supplier</label>
-                    <input type="text" id="supplierName" class="form-control" placeholder="Supplier name">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Notes</label>
-                    <textarea id="stockNotes" class="form-control" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" id="confirmStockBtn">Add to Stock</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -521,9 +521,10 @@
 
 <script>
 // API Configuration
-const API_URL = '/SIDJAN/datafetcher/stockindata.php';
+const API_URL = '/SIDJAN/datafetcher/productdata.php';
 
 let allProducts = [];
+let allUnits = {};
 let currentCategoryFilter = 'all';
 let currentSearchTerm = '';
 
@@ -550,17 +551,17 @@ async function apiCall(action, method = 'GET', data = null) {
 async function loadOtherProducts() {
     const result = await apiCall('getProducts');
     if (result.success && result.data) {
-        // Filter only items from other categories (not mobile phones or accessories)
+        // Filter only items from other categories
         allProducts = result.data.filter(p => {
             const category = p.Category || '';
-            return otherCategories.some(cat => category.includes(cat)) || 
-                   (!category.includes('Mobile') && !category.includes('Phone') && 
-                    !category.includes('Flagship') && !category.includes('Mid-Range') && 
-                    !category.includes('Budget') && !category.includes('Audio') && 
-                    !category.includes('Charger') && !category.includes('Case') && 
-                    !category.includes('Screen') && !category.includes('Powerbank') && 
-                    !category.includes('Cable'));
+            return otherCategories.some(cat => category === cat);
         });
+        
+        // Load units for each product
+        for (let product of allProducts) {
+            await loadProductUnits(product.ProductID);
+        }
+        
         calculateStats();
         filterAndDisplayProducts();
     } else {
@@ -576,18 +577,43 @@ async function loadOtherProducts() {
     }
 }
 
+async function loadProductUnits(productId) {
+    try {
+        const result = await apiCall(`getProductUnits&product_id=${productId}`);
+        if (result.success && result.data) {
+            allUnits[productId] = Array.isArray(result.data) ? result.data : [];
+        } else {
+            allUnits[productId] = [];
+        }
+    } catch (error) {
+        allUnits[productId] = [];
+    }
+}
+
 async function addProduct() {
     const productName = document.getElementById('addProductName').value.trim();
     const category = document.getElementById('addProductCategory').value;
     const sellingPrice = parseFloat(document.getElementById('addSellingPrice').value) || 0;
-    const initialStock = parseInt(document.getElementById('addInitialStock').value) || 0;
+    const initialStock = parseInt(document.getElementById('addInitialStock').value) || 1;
     const costPrice = parseFloat(document.getElementById('addCostPrice').value) || 0;
     const brand = document.getElementById('addProductBrand').value;
     const productCode = document.getElementById('addProductCode').value || 'MISC-' + Date.now();
+    const imei = document.getElementById('addIMEI').value.trim();
+    const serial = document.getElementById('addSerial').value.trim();
     
-    if (!productName || !category || sellingPrice <= 0) {
-        showToast('Please fill in required fields', 'warning');
+    if (!productName || !category || sellingPrice <= 0 || initialStock <= 0) {
+        showToast('Please fill in all required fields', 'warning');
         return;
+    }
+    
+    // Create units array
+    const units = [];
+    for (let i = 1; i <= initialStock; i++) {
+        units.push({
+            unit_number: i,
+            imei: i === 1 ? imei : '',
+            serial: i === 1 ? serial : ''
+        });
     }
     
     const data = {
@@ -596,8 +622,8 @@ async function addProduct() {
         category: category,
         selling_price: sellingPrice,
         cost_price: costPrice,
-        initial_stock: initialStock,
         product_code: productCode,
+        units: units,
         notes: document.getElementById('addProductSpecs').value
     };
     
@@ -612,69 +638,41 @@ async function addProduct() {
     }
 }
 
-async function updateProduct() {
-    const productId = document.getElementById('editProductId').value;
-    const productName = document.getElementById('editProductName').value.trim();
-    const category = document.getElementById('editProductCategory').value;
-    const sellingPrice = parseFloat(document.getElementById('editSellingPrice').value) || 0;
-    const costPrice = parseFloat(document.getElementById('editCostPrice').value) || 0;
-    const brand = document.getElementById('editProductBrand').value;
-    const productCode = document.getElementById('editProductCode').value;
-    const notes = document.getElementById('editProductSpecs').value;
+async function viewUnits(productId, productName) {
+    document.getElementById('unitsProductName').innerText = productName;
+    document.getElementById('unitsTableBody').innerHTML = '<tr><td colspan="5" class="text-center"><div class="loading-spinner"></div> Loading units...</td><\/tr>';
     
-    if (!productId || !productName || !category || sellingPrice <= 0) {
-        showToast('Please fill in required fields', 'warning');
-        return;
-    }
+    const modal = new bootstrap.Modal(document.getElementById('unitsModal'));
+    modal.show();
     
-    const data = {
-        product_id: parseInt(productId),
-        product_name: productName,
-        brand: brand,
-        category: category,
-        selling_price: sellingPrice,
-        cost_price: costPrice,
-        product_code: productCode,
-        notes: notes
-    };
+    const result = await apiCall(`getProductUnits&product_id=${productId}`);
     
-    const result = await apiCall('updateProduct', 'PUT', data);
-    if (result.success) {
-        showToast(result.message, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-        await loadOtherProducts();
+    if (result.success && result.data) {
+        const units = Array.isArray(result.data) ? result.data : [];
+        
+        if (units.length === 0) {
+            document.getElementById('unitsTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-muted">No units found</td><\/tr>';
+        } else {
+            document.getElementById('unitsTableBody').innerHTML = units.map(unit => {
+                let statusClass = '';
+                let statusText = unit.Status || 'available';
+                if (statusText === 'available') statusClass = 'badge-available';
+                else if (statusText === 'sold') statusClass = 'badge-sold';
+                else if (statusText === 'transferred') statusClass = 'badge-transferred';
+                
+                return `
+                    <tr>
+                        <td>#${unit.UnitNumber || '-'}</td>
+                        <td><small>${unit.IMEINumber || '-'}</small></td>
+                        <td><small>${unit.SerialNumber || '-'}</small></td>
+                        <td><span class="${statusClass}">${statusText.toUpperCase()}</span></td>
+                        <td><small>${unit.CreatedAt ? unit.CreatedAt.split(' ')[0] : '-'}</small></td>
+                    </tr>
+                `;
+            }).join('');
+        }
     } else {
-        showToast(result.message || 'Failed to update item', 'error');
-    }
-}
-
-async function addStock() {
-    const productId = document.getElementById('stockProductId').value;
-    const quantity = parseInt(document.getElementById('addQuantity').value) || 0;
-    const costPrice = parseFloat(document.getElementById('addStockCostPrice').value) || 0;
-    const supplier = document.getElementById('supplierName').value;
-    const notes = document.getElementById('stockNotes').value;
-    
-    if (!productId || quantity <= 0) {
-        showToast('Please enter valid quantity', 'warning');
-        return;
-    }
-    
-    const data = {
-        product_id: parseInt(productId),
-        quantity: quantity,
-        cost_price: costPrice,
-        supplier: supplier,
-        notes: notes
-    };
-    
-    const result = await apiCall('addStock', 'POST', data);
-    if (result.success) {
-        showToast(result.message, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
-        await loadOtherProducts();
-    } else {
-        showToast(result.message || 'Failed to add stock', 'error');
+        document.getElementById('unitsTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load units</td><\/tr>';
     }
 }
 
@@ -687,14 +685,18 @@ function calculateStats() {
     
     let totalValue = 0;
     for (let i = 0; i < allProducts.length; i++) {
-        const stock = parseFloat(allProducts[i].CurrentStock) || 0;
-        const price = parseFloat(allProducts[i].SellingPrice) || 0;
+        const product = allProducts[i];
+        const units = allUnits[product.ProductID] || [];
+        const stock = units.length > 0 ? units.length : (parseFloat(product.CurrentStock) || 0);
+        const price = parseFloat(product.SellingPrice) || 0;
         totalValue += stock * price;
     }
     
     let lowStockCount = 0;
     for (let i = 0; i < allProducts.length; i++) {
-        const stock = parseFloat(allProducts[i].CurrentStock) || 0;
+        const product = allProducts[i];
+        const units = allUnits[product.ProductID] || [];
+        const stock = units.length > 0 ? units.length : (parseFloat(product.CurrentStock) || 0);
         if (stock < 10 && stock > 0) {
             lowStockCount++;
         }
@@ -702,7 +704,9 @@ function calculateStats() {
     
     let totalUnits = 0;
     for (let i = 0; i < allProducts.length; i++) {
-        totalUnits += parseFloat(allProducts[i].CurrentStock) || 0;
+        const product = allProducts[i];
+        const units = allUnits[product.ProductID] || [];
+        totalUnits += units.length > 0 ? units.length : (parseFloat(product.CurrentStock) || 0);
     }
     
     document.getElementById('totalProducts').innerText = totalProducts;
@@ -748,7 +752,9 @@ function displayProducts(products) {
     }
     
     container.innerHTML = products.map(product => {
-        const currentStock = parseFloat(product.CurrentStock) || 0;
+        const units = allUnits[product.ProductID] || [];
+        const hasUnits = units.length > 0;
+        const currentStock = hasUnits ? units.length : (parseFloat(product.CurrentStock) || 0);
         const sellingPrice = parseFloat(product.SellingPrice) || 0;
         const isLowStock = currentStock < 10 && currentStock > 0;
         const isOutStock = currentStock === 0;
@@ -765,17 +771,35 @@ function displayProducts(products) {
         // Get icon based on category
         let iconClass = 'fa-microchip';
         const category = product.Category || '';
-        if (category.includes('Supplies ')) iconClass = 'fa-box-open';
-        else if (category.includes('Rental')) iconClass = 'fa-key'; 
-        else if (category.includes('Electronic')) iconClass = 'fa-microchip';
-        else if (category.includes('Tool')) iconClass = 'fa-tools';
-        else if (category.includes('Gadget')) iconClass = 'fa-tablet-alt';
+        if (category === 'Supplies') iconClass = 'fa-box-open';
+        else if (category === 'Rental') iconClass = 'fa-key'; 
+        else if (category === 'Electronic Parts') iconClass = 'fa-microchip';
+        else if (category === 'Tools') iconClass = 'fa-tools';
+        else if (category === 'Gadgets') iconClass = 'fa-tablet-alt';
         else iconClass = 'fa-box';
+        
+        // Show first few units
+        let unitsHtml = '';
+        if (hasUnits && units.length > 0) {
+            const displayUnits = units.slice(0, 3);
+            unitsHtml = `
+                <div class="units-list">
+                    ${displayUnits.map(unit => `
+                        <div class="unit-item">
+                            <span class="unit-number">Unit #${unit.UnitNumber}</span>
+                            <span class="unit-status ${unit.Status === 'available' ? 'available' : (unit.Status === 'sold' ? 'sold' : 'transferred')}">${unit.Status || 'available'}</span>
+                        </div>
+                    `).join('')}
+                    ${units.length > 3 ? `<div class="unit-item text-muted">+ ${units.length - 3} more units...</div>` : ''}
+                </div>
+            `;
+        }
         
         return `
             <div class="product-card">
                 ${isLowStock ? `<div class="product-badge"><span class="badge-low-stock">Low Stock!</span></div>` : ''}
                 ${isOutStock ? `<div class="product-badge"><span class="badge-out-stock">Out of Stock</span></div>` : ''}
+                ${hasUnits ? `<div class="badge-serialized"><i class="fas fa-microchip"></i> Serialized</div>` : ''}
                 <div class="product-image">
                     <i class="fas ${iconClass}"></i>
                 </div>
@@ -787,7 +811,13 @@ function displayProducts(products) {
                     <div class="product-stock">
                         <i class="fas fa-box"></i> Stock: <span class="${stockClass}">${stockText}</span>
                     </div>
+                    ${unitsHtml}
                     <div class="product-actions">
+                        ${hasUnits ? `
+                            <button class="btn btn-sm btn-outline-info" onclick="viewUnits(${product.ProductID}, '${escapeHtml(product.ProductName)}')">
+                                <i class="fas fa-list"></i> View Units
+                            </button>
+                        ` : ''}
                         <button class="btn btn-sm btn-outline-primary" onclick="openStockModal(${product.ProductID}, '${escapeHtml(product.ProductName)}', ${currentStock})">
                             <i class="fas fa-plus"></i> Add Stock
                         </button>
@@ -822,18 +852,106 @@ function openEditModal(productId) {
     const product = allProducts.find(p => p.ProductID == productId);
     if (!product) return;
     
-    document.getElementById('editProductId').value = product.ProductID;
-    document.getElementById('editProductName').value = product.ProductName;
-    document.getElementById('editProductCategory').value = product.Category || '';
-    document.getElementById('editProductBrand').value = product.Brand || '';
-    document.getElementById('editProductCode').value = product.ProductCode || '';
-    document.getElementById('editCostPrice').value = product.CostPrice || 0;
-    document.getElementById('editSellingPrice').value = product.SellingPrice || 0;
-    document.getElementById('editCurrentStock').value = product.CurrentStock + ' units';
-    document.getElementById('editProductSpecs').value = '';
+    // Build dynamic edit modal
+    const modalHtml = `
+        <div class="modal fade" id="dynamicEditModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Item</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editProductId" value="${product.ProductID}">
+                        <div class="mb-3">
+                            <label class="form-label">Product Name *</label>
+                            <input type="text" id="editProductName" class="form-control" value="${escapeHtml(product.ProductName)}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Category *</label>
+                            <select id="editProductCategory" class="form-select">
+                                <option value="">Select Category</option>
+                                <option value="Supplies" ${product.Category === 'Supplies' ? 'selected' : ''}>Supplies</option>
+                                <option value="Rental" ${product.Category === 'Rental' ? 'selected' : ''}>Rental</option>
+                                <option value="Electronic Parts" ${product.Category === 'Electronic Parts' ? 'selected' : ''}>Electronic Parts</option>
+                                <option value="Tools" ${product.Category === 'Tools' ? 'selected' : ''}>Tools</option>
+                                <option value="Gadgets" ${product.Category === 'Gadgets' ? 'selected' : ''}>Gadgets</option>
+                                <option value="Others" ${product.Category === 'Others' ? 'selected' : ''}>Others</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Brand</label>
+                            <input type="text" id="editProductBrand" class="form-control" value="${escapeHtml(product.Brand || '')}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Product Code</label>
+                            <input type="text" id="editProductCode" class="form-control" value="${product.ProductCode || ''}">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cost Price (₱)</label>
+                                <input type="number" id="editCostPrice" class="form-control" step="0.01" value="${product.CostPrice || 0}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Selling Price (₱) *</label>
+                                <input type="number" id="editSellingPrice" class="form-control" step="0.01" value="${product.SellingPrice || 0}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Current Stock</label>
+                            <input type="text" class="form-control" readonly value="${currentStock} units" style="background:#f8fafc;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description / Notes</label>
+                            <textarea id="editProductSpecs" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn btn-primary" id="confirmEditBtn">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
     
-    const modal = new bootstrap.Modal(document.getElementById('editModal'));
+    // Remove existing modal if any
+    const existingModal = document.getElementById('dynamicEditModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    const modal = new bootstrap.Modal(document.getElementById('dynamicEditModal'));
     modal.show();
+    
+    // Add event listener for save
+    document.getElementById('confirmEditBtn').addEventListener('click', async function() {
+        const data = {
+            product_id: parseInt(document.getElementById('editProductId').value),
+            product_name: document.getElementById('editProductName').value.trim(),
+            brand: document.getElementById('editProductBrand').value,
+            category: document.getElementById('editProductCategory').value,
+            product_code: document.getElementById('editProductCode').value,
+            cost_price: parseFloat(document.getElementById('editCostPrice').value) || 0,
+            selling_price: parseFloat(document.getElementById('editSellingPrice').value) || 0,
+            description: document.getElementById('editProductSpecs').value
+        };
+        
+        if (!data.product_name || !data.category || data.selling_price <= 0) {
+            showToast('Please fill in required fields', 'warning');
+            return;
+        }
+        
+        const result = await apiCall('updateProduct', 'PUT', data);
+        if (result.success) {
+            showToast(result.message, 'success');
+            modal.hide();
+            await loadOtherProducts();
+        } else {
+            showToast(result.message || 'Failed to update item', 'error');
+        }
+    });
 }
 
 function clearAddForm() {
@@ -843,7 +961,9 @@ function clearAddForm() {
     document.getElementById('addProductCode').value = '';
     document.getElementById('addCostPrice').value = '';
     document.getElementById('addSellingPrice').value = '';
-    document.getElementById('addInitialStock').value = '0';
+    document.getElementById('addInitialStock').value = '1';
+    document.getElementById('addIMEI').value = '';
+    document.getElementById('addSerial').value = '';
     document.getElementById('addProductSpecs').value = '';
 }
 
@@ -897,9 +1017,13 @@ function escapeHtml(text) {
 // EVENT LISTENERS
 // ============================================
 
+let searchTimeout;
 document.getElementById('searchInput').addEventListener('input', function(e) {
-    currentSearchTerm = e.target.value.toLowerCase();
-    filterAndDisplayProducts();
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        currentSearchTerm = e.target.value.toLowerCase();
+        filterAndDisplayProducts();
+    }, 300);
 });
 
 document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -912,8 +1036,6 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 });
 
 document.getElementById('confirmAddBtn').addEventListener('click', addProduct);
-document.getElementById('confirmEditBtn').addEventListener('click', updateProduct);
-document.getElementById('confirmStockBtn').addEventListener('click', addStock);
 
 // ============================================
 // INITIALIZATION
