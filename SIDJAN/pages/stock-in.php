@@ -1551,7 +1551,9 @@ function renderHistoryTable(history) {
         <tr>
             <td><small>${h.TransactionDate || ''}</small></td>
             <td><strong>${escapeHtml(h.ProductName)}</strong></td>
-            <td><span class="badge-quantity">+${h.QuantityAdded}</span></td>
+            <td><span class="badge-quantity">
+             ${h.QuantityAdded > 0 ? `+${h.QuantityAdded}` : `${h.QuantityAdded}`}
+             </span></td>
             <td>${h.OldStock}</td>
             <td>${h.NewStock}</td>
             <td>₱${parseFloat(h.CostPrice || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

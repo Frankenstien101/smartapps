@@ -527,8 +527,8 @@ function displayLowStockReport(data, summary) {
     }
     
     tbody.innerHTML = data.map(product => {
-        let statusClass = product.CurrentStock === 0 ? 'badge-out' : 'badge-low';
-        let statusText = product.CurrentStock === 0 ? 'OUT OF STOCK' : 'LOW STOCK';
+        let statusClass = product.AvailableQuantity === 0 ? 'badge-out' : 'badge-low';
+        let statusText = product.AvailableQuantity === 0 ? 'OUT OF STOCK' : 'LOW STOCK';
         
         return `
             <tr>
@@ -536,7 +536,7 @@ function displayLowStockReport(data, summary) {
                 <td><strong>${escapeHtml(product.ProductName)}<\/strong><\/td>
                 <td>${product.Category || '-'}<\/td>
                 <td>${product.Brand || '-'}<\/td>
-                <td><span class="${statusClass}">${product.CurrentStock} units</span><\/td>
+                <td><span class="${statusClass}">${product.AvailableQuantity} units</span><\/td>
                 <td>₱${formatNumber(product.SellingPrice)}<\/td>
                 <td>₱${formatNumber(product.TotalValue)}<\/td>
                 <td><span class="${statusClass}">${statusText}</span><\/td>
@@ -612,7 +612,7 @@ function displayCategoryReport(data, totalValue) {
             </div>
             <div class="summary-row">
                 <span>Total Products:</span>
-                <span>${data.reduce((sum, c) => sum + c.ProductCount, 0)}</span>
+                <span>${data.reduce((sum, c) => sum + (Number(c.ProductCount) || 0), 0)}</span>
             </div>
             <div class="summary-row total">
                 <span>Total Inventory Value:</span>
@@ -717,8 +717,8 @@ function displayProductDetails(data, summary) {
     }
     
     tbody.innerHTML = data.map(product => {
-        let stockClass = product.CurrentStock === 0 ? 'badge-out' : (product.CurrentStock < 10 ? 'badge-low' : 'badge-normal');
-        let stockText = product.CurrentStock === 0 ? 'OUT' : (product.CurrentStock < 10 ? 'LOW' : 'OK');
+        let stockClass = product.AvailableQuantity === 0 ? 'badge-out' : (product.AvailableQuantity < 10 ? 'badge-low' : 'badge-normal');
+        let stockText = product.AvailableQuantity === 0 ? 'OUT' : (product.AvailableQuantity < 10 ? 'LOW' : 'OK');
         
         return `
             <tr>
@@ -726,7 +726,7 @@ function displayProductDetails(data, summary) {
                 <td><strong>${escapeHtml(product.ProductName)}<\/strong><\/td>
                 <td>${product.Category || '-'}<\/td>
                 <td>${product.Brand || '-'}<\/td>
-                <td><span class="${stockClass}">${product.CurrentStock} (${stockText})</span><\/td>
+                <td><span class="${stockClass}">${product.AvailableQuantity} (${stockText})</span><\/td>
                 <td>₱${formatNumber(product.CostPrice)}<\/td>
                 <td>₱${formatNumber(product.SellingPrice)}<\/td>
                 <td>₱${formatNumber(product.ProfitPerUnit)}<\/td>

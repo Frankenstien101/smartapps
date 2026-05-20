@@ -141,7 +141,7 @@
     }
     
     .badge-total {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1b1c1d 0%, #020581 100%);
         color: white;
         padding: 4px 10px;
         border-radius: 20px;
@@ -361,7 +361,7 @@
     
     .summary-value.sales { color: #4f9eff; }
     .summary-value.installment { color: #28a745; }
-    .summary-value.total { color: #764ba2; }
+    .summary-value.total { color: #ece6e6; }
     
     /* Toast */
     .toast-container {
@@ -593,17 +593,14 @@
                         <div class="summary-value installment" id="installmentCount">0</div>
                     </div>
                     <div class="summary-item">
+                        <div class="summary-label">Down Payment</div>
+                        <div class="summary-value installment" id="downPaymentTotal">₱0</div>
+                    </div>
+                    <div class="summary-item">
                         <div class="summary-label">Installment Paid</div>
                         <div class="summary-value installment" id="installmentPaid">₱0</div>
                     </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Purchases</div>
-                        <div class="summary-value total" id="totalTransactionCount">0</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Spent</div>
-                        <div class="summary-value total" id="totalCustomerSpent">₱0</div>
-                    </div>
+                  
                 </div>
                 
                 <hr>
@@ -646,21 +643,33 @@
                                     <th>Date</th>
                                     <th>Product(s)</th>
                                     <th>Total Amount</th>
+                                    <th>Down Payment</th>
+                                    <th>Loan Amount</th>
                                     <th>Paid Amount</th>
                                     <th>Balance</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody id="installmentHistoryBody">
-                                <tr><td colspan="7" class="text-center py-3"><div class="loading-spinner" style="width: 20px; height: 20px;"></div> Loading installment records...</td></tr>
+                                <tr><td colspan="9" class="text-center py-3"><div class="loading-spinner" style="width: 20px; height: 20px;"></div> Loading installment records...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
+            <div class="modal-footer" style="justify-content: space-between; background-color: #1d283a;">
+    <div style="display: flex; gap: 30px;">
+        <div class="summary-item">
+            <div class="summary-label">Total Purchases</div>
+            <div class="summary-value total" id="totalTransactionCount">0</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Total Spent</div>
+            <div class="summary-value total" id="totalCustomerSpent">₱0</div>
+        </div>
+    </div>
+    <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>
         </div>
     </div>
 </div>
@@ -707,8 +716,8 @@ async function loadCustomers() {
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
                         <i class="fas fa-user-plus"></i> Add First Customer
                     </button>
-                </td>
-            </tr>
+                 </td>
+             </tr>
         `;
     }
 }
@@ -724,6 +733,7 @@ async function loadAllCustomerFinancials() {
         let salesCount = 0;
         let installmentPaid = 0;
         let installmentCount = 0;
+        let downPaymentTotal = 0;
         
         // Calculate sales totals
         if (salesResult.success && salesResult.data) {
@@ -735,7 +745,7 @@ async function loadAllCustomerFinancials() {
             salesCount = customerSales.length;
         }
         
-        // Calculate installment paid amounts
+        // Calculate installment totals including down payment
         if (installmentResult.success && installmentResult.data) {
             const customerInstallments = installmentResult.data.filter(inst => 
                 (inst.CustomerPhone && inst.CustomerPhone === customer.Phone) ||
@@ -743,6 +753,7 @@ async function loadAllCustomerFinancials() {
             );
             installmentPaid = customerInstallments.reduce((sum, inst) => sum + (parseFloat(inst.PaidAmount) || 0), 0);
             installmentCount = customerInstallments.length;
+            downPaymentTotal = customerInstallments.reduce((sum, inst) => sum + (parseFloat(inst.DownPayment) || 0), 0);
         }
         
         // Store calculated values
@@ -750,7 +761,9 @@ async function loadAllCustomerFinancials() {
         customer.SalesCount = salesCount;
         customer.InstallmentPaid = installmentPaid;
         customer.InstallmentCount = installmentCount;
-        customer.TotalSpentAmount = salesTotal + installmentPaid;
+        customer.DownPaymentTotal = downPaymentTotal;
+        // Total Spent = Sales Total + Down Payment + Installment Payments Made
+        customer.TotalSpentAmount = salesTotal + downPaymentTotal + installmentPaid;
         customer.TotalTransactionsCount = salesCount + installmentCount;
     }
     
@@ -785,17 +798,18 @@ async function loadCustomerInstallments(customerName, customerPhone) {
             );
             const installmentPaid = installmentHistory.reduce((sum, inst) => sum + (parseFloat(inst.PaidAmount) || 0), 0);
             const installmentCount = installmentHistory.length;
+            const downPaymentTotal = installmentHistory.reduce((sum, inst) => sum + (parseFloat(inst.DownPayment) || 0), 0);
             
             displayInstallmentHistory(installmentHistory);
-            return { installmentPaid, installmentCount };
+            return { installmentPaid, installmentCount, downPaymentTotal };
         } else {
-            document.getElementById('installmentHistoryBody').innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">No installment records found</td></tr>';
-            return { installmentPaid: 0, installmentCount: 0 };
+            document.getElementById('installmentHistoryBody').innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">No installment records found</td></tr>';
+            return { installmentPaid: 0, installmentCount: 0, downPaymentTotal: 0 };
         }
     } catch (error) {
         console.error('Error loading installments:', error);
-        document.getElementById('installmentHistoryBody').innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Unable to load installment data</td></tr>';
-        return { installmentPaid: 0, installmentCount: 0 };
+        document.getElementById('installmentHistoryBody').innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">Unable to load installment data</td></tr>';
+        return { installmentPaid: 0, installmentCount: 0, downPaymentTotal: 0 };
     }
 }
 
@@ -923,8 +937,8 @@ function displayCustomers(customers) {
                 <td colspan="8" class="empty-state">
                     <i class="fas fa-search"></i>
                     <p>No customers found</p>
-                </td>
-            </tr>
+                 </td>
+             </tr>
         `;
         return;
     }
@@ -982,7 +996,7 @@ function displayInstallmentHistory(installmentHistory) {
     const tbody = document.getElementById('installmentHistoryBody');
     
     if (!installmentHistory || installmentHistory.length === 0) {
-        tbody.innerHTML = '<table><td colspan="7" class="text-center py-3 text-muted">No installment records found</tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">No installment records found</td></tr>';
         return;
     }
     
@@ -1004,12 +1018,16 @@ function displayInstallmentHistory(installmentHistory) {
             statusText = 'ACTIVE';
         }
         
+        const loanAmount = parseFloat(inst.ProductPrice) - parseFloat(inst.DownPayment);
+        
         return `
             <tr>
                 <td><strong>${escapeHtml(inst.InstallmentNo)}</strong></td>
                 <td>${inst.StartDate || '-'}</td>
                 <td>${escapeHtml(inst.ProductName) || 'Multiple Items'}</td>
-                <td><strong>₱${formatNumber(inst.TotalAmount)}</strong></td>
+                <td><strong>₱${formatNumber(inst.ProductPrice)}</strong></td>
+                <td>₱${formatNumber(inst.DownPayment)}</td>
+                <td>₱${formatNumber(loanAmount)}</td>
                 <td>₱${formatNumber(inst.PaidAmount)}</td>
                 <td>₱${formatNumber(inst.RemainingBalance)}</td>
                 <td><span class="badge-payment ${statusClass}">${statusText}</span></td>
@@ -1059,7 +1077,7 @@ async function viewCustomer(customerId) {
     
     // Load data for summary
     document.getElementById('salesHistoryBody').innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="loading-spinner" style="width: 20px; height: 20px;"></div> Loading transactions...</td></tr>';
-    document.getElementById('installmentHistoryBody').innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="loading-spinner" style="width: 20px; height: 20px;"></div> Loading installment records...</td></tr>';
+    document.getElementById('installmentHistoryBody').innerHTML = '<tr><td colspan="9" class="text-center py-3"><div class="loading-spinner" style="width: 20px; height: 20px;"></div> Loading installment records...</td></tr>';
     
     const salesData = await loadCustomerSales(customer.CustomerName, customer.Phone);
     const installmentData = await loadCustomerInstallments(customer.CustomerName, customer.Phone);
@@ -1068,9 +1086,12 @@ async function viewCustomer(customerId) {
     document.getElementById('salesCount').innerText = salesData.salesCount;
     document.getElementById('salesSpent').innerHTML = '₱' + formatNumber(salesData.salesTotal);
     document.getElementById('installmentCount').innerText = installmentData.installmentCount;
+    document.getElementById('downPaymentTotal').innerHTML = '₱' + formatNumber(installmentData.downPaymentTotal);
     document.getElementById('installmentPaid').innerHTML = '₱' + formatNumber(installmentData.installmentPaid);
     document.getElementById('totalTransactionCount').innerText = salesData.salesCount + installmentData.installmentCount;
-    document.getElementById('totalCustomerSpent').innerHTML = '₱' + formatNumber(salesData.salesTotal + installmentData.installmentPaid);
+    // Total Spent = Sales Total + Down Payment + Installment Payments Made
+    const totalSpent = salesData.salesTotal + installmentData.downPaymentTotal + installmentData.installmentPaid;
+    document.getElementById('totalCustomerSpent').innerHTML = '₱' + formatNumber(totalSpent);
     
     // Reset to sales tab
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));

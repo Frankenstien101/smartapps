@@ -8,7 +8,6 @@
         overflow-x: auto;
     }
     
-    /* Filter Section */
     .filter-section {
         background: white;
         border-radius: 16px;
@@ -17,7 +16,6 @@
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
     
-    /* Stats Cards */
     .stats-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -64,7 +62,6 @@
         margin-top: 5px;
     }
     
-    /* Transaction Table */
     .transactions-card {
         background: white;
         border-radius: 16px;
@@ -204,7 +201,6 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Modal Styles */
     .modal-content {
         border-radius: 20px;
         max-width: 500px;
@@ -222,22 +218,13 @@
         border-radius: 20px 20px 0 0;
     }
     
+    /* RECEIPT STYLES - EXACT COPY FROM INSTALLMENT */
     .receipt-content {
         font-family: 'Courier New', monospace;
         font-size: 12px;
-        max-width: 100%;
+        max-width: 350px;
+        margin: 0 auto;
         word-wrap: break-word;
-    }
-    
-    .receipt-line {
-        text-align: center;
-        margin: 8px 0;
-    }
-    
-    .receipt-line-dashed {
-        text-align: center;
-        letter-spacing: 2px;
-        color: #666;
     }
     
     .receipt-header {
@@ -245,8 +232,9 @@
         margin-bottom: 15px;
     }
     
-    .receipt-header h6 {
+    .receipt-header h3 {
         margin: 0;
+        font-size: 20px;
         font-weight: bold;
     }
     
@@ -255,32 +243,24 @@
         color: #666;
     }
     
+    .receipt-line-dashed {
+        text-align: center;
+        letter-spacing: 2px;
+        color: #666;
+        margin: 5px 0;
+    }
+    
     .receipt-row {
         display: flex;
         justify-content: space-between;
         margin: 5px 0;
     }
     
-    .receipt-items {
-        margin: 10px 0;
-    }
-    
-    .receipt-item {
-        display: flex;
-        justify-content: space-between;
-        margin: 3px 0;
-    }
-    
-    .receipt-item-details {
-        font-size: 10px;
-        color: #666;
-        margin-left: 10px;
-    }
-    
     .receipt-total {
         border-top: 1px dashed #ccc;
         margin-top: 10px;
         padding-top: 10px;
+        font-weight: bold;
     }
     
     .receipt-footer {
@@ -289,7 +269,14 @@
         font-size: 10px;
     }
     
-    /* Date filter */
+    .text-center {
+        text-align: center;
+    }
+    
+    .mt-2 {
+        margin-top: 10px;
+    }
+    
     .date-filter {
         display: flex;
         gap: 10px;
@@ -302,34 +289,6 @@
         border: 1px solid #e2e8f0;
         border-radius: 10px;
         font-size: 13px;
-    }
-    
-    /* Empty state */
-    .empty-state {
-        text-align: center;
-        padding: 60px;
-        color: #94a3b8;
-    }
-    
-    .empty-state i {
-        font-size: 48px;
-        margin-bottom: 15px;
-    }
-    
-    .unit-info {
-        font-size: 10px;
-        color: #6c7a91;
-        font-family: monospace;
-        margin-top: 3px;
-    }
-    
-    .badge-serialized {
-        background: #4f9eff;
-        color: white;
-        padding: 2px 6px;
-        border-radius: 12px;
-        font-size: 9px;
-        margin-left: 5px;
     }
     
     @media (max-width: 768px) {
@@ -364,7 +323,6 @@
         }
     }
     
-    /* Print styles */
     @media print {
         .filter-section, .card-header, .pagination, .modal-footer {
             display: none;
@@ -395,7 +353,6 @@
 </style>
 
 <div class="transactions-container" style="overflow-y: auto;">
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4><i class="fas fa-receipt"></i> Sales Transactions</h4>
@@ -408,7 +365,6 @@
         </div>
     </div>
     
-    <!-- Stats Row -->
     <div class="stats-row" id="statsRow">
         <div class="stat-card">
             <div class="stat-icon primary"><i class="fas fa-chart-line"></i></div>
@@ -427,20 +383,19 @@
         </div>
     </div>
     
-    <!-- Filter Section -->
     <div class="filter-section">
         <div class="row align-items-center g-2">
             <div class="col-md-4">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Search by receipt, customer, IMEI, or serial..." onkeyup="filterTransactions()">
+                    <input type="text" id="searchInput" placeholder="Search..." onkeyup="filterTransactions()">
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="date-filter">
-                    <input type="date" id="startDate" class="form-control form-control-sm" placeholder="Start Date">
+                    <input type="date" id="startDate" class="form-control form-control-sm">
                     <span>to</span>
-                    <input type="date" id="endDate" class="form-control form-control-sm" placeholder="End Date">
+                    <input type="date" id="endDate" class="form-control form-control-sm">
                 </div>
             </div>
             <div class="col-md-4">
@@ -454,7 +409,6 @@
         </div>
     </div>
     
-    <!-- Transactions Table -->
     <div class="transactions-card">
         <div class="card-header">
             <h5><i class="fas fa-list"></i> Transaction History</h5>
@@ -465,74 +419,47 @@
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
-                    <tr>
-                        <th>Receipt No.</th>
-                        <th>Date</th>
-                        <th>Customer</th>
-                        <th>Payment</th>
-                        <th>Products / Units</th>
-                        <th>Total Amount</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
+                    <tr><th>Receipt No.</th><th>Date</th><th>Customer</th><th>Payment</th><th>Products</th><th>Total</th><th>Status</th><th>Action</th></tr>
                 </thead>
-                <tbody id="transactionsTableBody">
-                    <tr>
-                        <td colspan="8" class="text-center">
-                            <div class="loading-spinner"></div> Loading...
-                        </td>
-                    </tr>
-                </tbody>
+                <tbody id="transactionsTableBody"><tr><td colspan="8" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr></tbody>
             </table>
         </div>
-        <div class="pagination" id="pagination">
-            <!-- Pagination will be inserted here -->
-        </div>
+        <div class="pagination" id="pagination"></div>
     </div>
 </div>
 
-<!-- Transaction Details Modal -->
+<!-- Transaction Receipt Modal - EXACT SAME AS INSTALLMENT RECEIPT MODAL -->
 <div class="modal fade" id="transactionModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-sm modal-dialog-centered"  style="width: 300px;">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-receipt"></i> Transaction Receipt</h5>
+            <div class="modal-header" style="background: linear-gradient(135deg, #4f9eff, #2563eb); color: white;">
+                <h5 class="modal-title"><i class="fas fa-receipt"></i> Sales Receipt</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-3" id="transactionDetails">
-                <div class="text-center py-4">
-                    <div class="loading-spinner"></div> Loading...
-                </div>
+            <div class="modal-body" id="transactionDetails" style="max-height: 70vh; overflow-y: auto;">
+                <div class="text-center py-4">Loading receipt...</div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary btn-sm" onclick="printTransaction()">
-                    <i class="fas fa-print"></i> Print
+                <button class="btn btn-primary" onclick="printTransactionReceipt()">
+                    <i class="fas fa-print"></i> Print Receipt
                 </button>
-                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// API Configuration
 const API_URL = '/SIDJAN/datafetcher/stockindata.php';
-
-// Global variables
 let allTransactions = [];
 let currentPage = 1;
 let itemsPerPage = 15;
 let currentReceiptHTML = '';
 
-// ============================================
-// API CALLS
-// ============================================
-
 async function apiCall(action, method = 'GET', data = null) {
     try {
         const options = { method: method, headers: { 'Content-Type': 'application/json' } };
         if (data) options.body = JSON.stringify(data);
-        
         const response = await fetch(`${API_URL}?action=${action}`, options);
         return await response.json();
     } catch (error) {
@@ -548,14 +475,7 @@ async function loadTransactions() {
         calculateStats();
         filterAndDisplayTransactions();
     } else {
-        document.getElementById('transactionsTableBody').innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center text-muted py-5">
-                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-                    No transactions found
-                <\/td>
-            </tr>
-        `;
+        document.getElementById('transactionsTableBody').innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5"><i class="fas fa-inbox fa-2x mb-2 d-block"></i>No transactions found</td></tr>`;
     }
 }
 
@@ -564,26 +484,16 @@ async function loadTransactionDetails(saleId) {
     if (result.success && result.data) {
         generateReceiptHTML(result.data);
     } else {
-        document.getElementById('transactionDetails').innerHTML = `
-            <div class="text-center py-4 text-danger">
-                <i class="fas fa-exclamation-circle fa-2x mb-2 d-block"></i>
-                Failed to load transaction details
-            </div>
-        `;
+        document.getElementById('transactionDetails').innerHTML = `<div class="text-center py-4 text-danger"><i class="fas fa-exclamation-circle fa-2x mb-2 d-block"></i>Failed to load</div>`;
     }
 }
 
 async function loadTodaySales() {
     const result = await apiCall('getTodaySales');
     if (result.success && result.data) {
-        const todayAmount = parseFloat(result.data.TodaySales || 0);
-        document.getElementById('todaySales').innerHTML = '₱' + formatNumber(todayAmount);
+        document.getElementById('todaySales').innerHTML = '₱' + formatNumber(result.data.TodaySales || 0);
     }
 }
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
 
 function formatNumber(value) {
     if (value === null || value === undefined) return '0.00';
@@ -592,23 +502,10 @@ function formatNumber(value) {
 
 function calculateStats() {
     let totalSales = 0;
-    allTransactions.forEach(t => {
-        let amount = 0;
-        if (typeof t.TotalAmount === 'number') {
-            amount = t.TotalAmount;
-        } else if (typeof t.TotalAmount === 'string') {
-            amount = parseFloat(t.TotalAmount) || 0;
-        }
-        totalSales += amount;
-    });
-    
+    allTransactions.forEach(t => totalSales += parseFloat(t.TotalAmount) || 0);
     document.getElementById('totalSales').innerHTML = '₱' + formatNumber(totalSales);
     document.getElementById('totalTransactions').innerHTML = allTransactions.length;
 }
-
-// ============================================
-// FILTER AND DISPLAY
-// ============================================
 
 function filterTransactions() {
     currentPage = 1;
@@ -623,48 +520,18 @@ function filterAndDisplayTransactions() {
     
     let filtered = [...allTransactions];
     
-    // Filter by search term
     if (searchTerm) {
-        filtered = filtered.filter(t => 
-            (t.ReceiptNo && t.ReceiptNo.toLowerCase().includes(searchTerm)) ||
-            (t.CustomerName && t.CustomerName.toLowerCase().includes(searchTerm))
-        );
+        filtered = filtered.filter(t => (t.ReceiptNo && t.ReceiptNo.toLowerCase().includes(searchTerm)) || (t.CustomerName && t.CustomerName.toLowerCase().includes(searchTerm)));
     }
+    if (paymentFilter !== 'all') filtered = filtered.filter(t => t.PaymentMethod === paymentFilter);
+    if (startDate) filtered = filtered.filter(t => (t.SaleDate ? t.SaleDate.split(' ')[0] : '') >= startDate);
+    if (endDate) filtered = filtered.filter(t => (t.SaleDate ? t.SaleDate.split(' ')[0] : '') <= endDate);
     
-    // Filter by payment method
-    if (paymentFilter !== 'all') {
-        filtered = filtered.filter(t => t.PaymentMethod === paymentFilter);
-    }
-    
-    // Filter by date range
-    if (startDate) {
-        filtered = filtered.filter(t => {
-            const transDate = t.SaleDate ? t.SaleDate.split(' ')[0] : '';
-            return transDate >= startDate;
-        });
-    }
-    if (endDate) {
-        filtered = filtered.filter(t => {
-            const transDate = t.SaleDate ? t.SaleDate.split(' ')[0] : '';
-            return transDate <= endDate;
-        });
-    }
-    
-    // Update stats for filtered results
     let filteredTotal = 0;
-    filtered.forEach(t => {
-        let amount = 0;
-        if (typeof t.TotalAmount === 'number') {
-            amount = t.TotalAmount;
-        } else if (typeof t.TotalAmount === 'string') {
-            amount = parseFloat(t.TotalAmount) || 0;
-        }
-        filteredTotal += amount;
-    });
+    filtered.forEach(t => filteredTotal += parseFloat(t.TotalAmount) || 0);
     document.getElementById('totalSales').innerHTML = '₱' + formatNumber(filteredTotal);
     document.getElementById('totalTransactions').innerHTML = filtered.length;
     
-    // Pagination
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const start = (currentPage - 1) * itemsPerPage;
     const paginatedItems = filtered.slice(start, start + itemsPerPage);
@@ -675,94 +542,41 @@ function filterAndDisplayTransactions() {
 
 function displayTransactions(transactions) {
     const tbody = document.getElementById('transactionsTableBody');
-    
     if (!transactions || transactions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center py-5 text-muted">
-                    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-                    No transactions found
-                <\/td>
-            </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-2 d-block"></i>No transactions found</td></tr>`;
         return;
     }
     
-    tbody.innerHTML = transactions.map(transaction => {
-        const paymentClass = transaction.PaymentMethod === 'cash' ? 'badge-cash' : 
-                            (transaction.PaymentMethod === 'card' ? 'badge-card' : 'badge-gcash');
-        const statusClass = transaction.Status === 'completed' ? 'badge-completed' : 'badge-cancelled';
-        const amount = parseFloat(transaction.TotalAmount || 0);
-        
-        // Show product names with unit info summary
-        let productsHtml = transaction.ProductName || 'Multiple Items';
-        
-        return `
-            <tr>
-                <td><strong>${escapeHtml(transaction.ReceiptNo || 'N/A')}</strong></td>
-                <td><small>${transaction.SaleDate || ''}</small></td>
-                <td>${escapeHtml(transaction.CustomerName || 'Walk-in Customer')}</td>
-                <td><span class="badge-payment ${paymentClass}">${(transaction.PaymentMethod || 'cash').toUpperCase()}</span></td>
-                <td>${escapeHtml(productsHtml)}</td>
-                <td class="fw-bold">₱${formatNumber(amount)}</td>
-                <td><span class="badge-status ${statusClass}">${transaction.Status || 'completed'}</span></td>
-                <td>
-                    <button class="view-btn" onclick="viewTransaction(${transaction.SaleID})">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                </td>
-            </tr>
-        `;
+    tbody.innerHTML = transactions.map(t => {
+        const paymentClass = t.PaymentMethod === 'cash' ? 'badge-cash' : (t.PaymentMethod === 'card' ? 'badge-card' : 'badge-gcash');
+        const amount = parseFloat(t.TotalAmount || 0);
+        return `<tr>
+            <td><strong>${escapeHtml(t.ReceiptNo || 'N/A')}</strong></td>
+            <td><small>${t.SaleDate || ''}</small></td>
+            <td>${escapeHtml(t.CustomerName || 'Walk-in')}</td>
+            <td><span class="badge-payment ${paymentClass}">${(t.PaymentMethod || 'cash').toUpperCase()}</span></td>
+            <td>${escapeHtml(t.ProductName || 'Items')}</td>
+            <td class="fw-bold">₱${formatNumber(amount)}</td>
+            <td><span class="badge-status badge-completed">${t.Status || 'completed'}</span></td>
+            <td><button class="view-btn" onclick="viewTransaction(${t.SaleID})"><i class="fas fa-eye"></i> View</button></td>
+        </tr>`;
     }).join('');
 }
 
 function displayPagination(totalPages) {
     const container = document.getElementById('pagination');
+    if (totalPages <= 1) { container.innerHTML = ''; return; }
     
-    if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
+    let html = `<div class="d-flex justify-content-between w-100"><div><small>Page ${currentPage} of ${totalPages}</small></div><div><ul class="pagination mb-0">`;
+    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">Previous</a></li>`;
+    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+        html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a></li>`;
     }
-    
-    let paginationHTML = `
-        <div class="d-flex justify-content-between align-items-center w-100">
-            <div>
-                <small class="text-muted">Page ${currentPage} of ${totalPages}</small>
-            </div>
-            <div>
-                <ul class="pagination mb-0">
-                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">Previous</a>
-                    </li>
-    `;
-    
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-    
-    for (let i = startPage; i <= endPage; i++) {
-        paginationHTML += `
-            <li class="page-item ${i === currentPage ? 'active' : ''}">
-                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
-            </li>
-        `;
-    }
-    
-    paginationHTML += `
-                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">Next</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = paginationHTML;
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">Next</a></li></ul></div></div>`;
+    container.innerHTML = html;
 }
 
-function changePage(page) {
-    currentPage = page;
-    filterAndDisplayTransactions();
-}
+function changePage(page) { currentPage = page; filterAndDisplayTransactions(); }
 
 function generateReceiptHTML(data) {
     const sale = data.sale;
@@ -783,96 +597,71 @@ function generateReceiptHTML(data) {
     const total = parseFloat(sale.TotalAmount) || subtotal;
     const saleDate = sale.SaleDate ? sale.SaleDate.split(' ')[0] : '';
     const saleTime = sale.SaleDate ? sale.SaleDate.split(' ')[1] : '';
+    const cashierName = '<?php echo $_SESSION["NAME"] ?? "Admin"; ?>';
+    // Generate products HTML - SAME FORMAT AS INSTALLMENT
+    let productsHtml = '';
+    if (items && items.length > 0) {
+        productsHtml = '<div class="receipt-line-dashed">- - - - - - - - - - -</div>';
+        productsHtml += '<div style="font-weight: bold; margin-bottom: 5px;">Products Purchased:</div>';
+        items.forEach(item => {
+            const qty = parseInt(item.Quantity) || 0;
+            const price = parseFloat(item.Price) || 0;
+            const totalPrice = parseFloat(item.Total) || 0;
+            
+            productsHtml += `
+                <div class="receipt-row" style="font-size: 10px;">
+                    <span>${escapeHtml(item.ProductName)} ${item.UnitNumber ? `(Unit #${item.UnitNumber})` : `(x${qty})`}</span>
+                    <span>₱${formatNumber(totalPrice)}</span>
+                </div>
+                <div class="receipt-row" style="font-size: 9px; color: #666;">
+                    <span>${qty} x ₱${formatNumber(price)}</span>
+                    <span>Code: ${escapeHtml(item.ProductCode || 'N/A')}</span>
+                </div>
+            `;
+            
+            if (item.IMEINumber) {
+                productsHtml += `<div class="receipt-row" style="font-size: 9px; color: #666;"><span>IMEI:</span><span>${escapeHtml(item.IMEINumber)}</span></div>`;
+            }
+            if (item.SerialNumber) {
+                productsHtml += `<div class="receipt-row" style="font-size: 9px; color: #666;"><span>Serial:</span><span>${escapeHtml(item.SerialNumber)}</span></div>`;
+            }
+        });
+        productsHtml += '<div class="receipt-line-dashed">- - - - - - - - - - - -</div>';
+    }
     
+    // Use LET instead of CONST so we can append to it
     let receiptHTML = `
-        <div class="receipt-content" style="max-width: 350px; margin: 0 auto;">
+        <div class="receipt-content">
             <div class="receipt-header">
-                <h6>SIDJAN ELECTRONIC</h6>
+                <h3>SIDJAN</h3>
                 <small>Electronic Products Trading</small><br>
-                <small>Tel: 0912-345-6789</small>
+                <small><?php echo $_SESSION["branch_name"] ?? "-"; ?></small>
             </div>
-            <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-            <div class="receipt-row">
-                <span>Receipt No:</span>
-                <span><strong>${escapeHtml(sale.ReceiptNo)}</strong></span>
-            </div>
-            <div class="receipt-row">
-                <span>Date:</span>
-                <span>${saleDate} ${saleTime}</span>
-            </div>
-            <div class="receipt-row">
-                <span>Customer:</span>
-                <span>${escapeHtml(sale.CustomerName || 'Walk-in Customer')}</span>
-            </div>
-            <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-            <div class="fw-bold mb-1">ITEMS:</div>
-    `;
-    
-    items.forEach(item => {
-        const qty = parseInt(item.Quantity) || 0;
-        const price = parseFloat(item.Price) || 0;
-        const totalPrice = parseFloat(item.Total) || 0;
-        
-        receiptHTML += `
-            <div class="receipt-item">
-                <span>${escapeHtml(item.ProductName)}</span>
-                <span>₱${formatNumber(totalPrice)}</span>
-            </div>
-            <div class="receipt-item-details">
-                ${qty} x ₱${formatNumber(price)}
-                ${item.UnitNumber ? `<span class="badge-serialized">Unit #${item.UnitNumber}</span>` : ''}
-                <span style="float: right;">Code: ${escapeHtml(item.ProductCode || 'N/A')}</span>
-            </div>
-        `;
-        
-        if (item.IMEINumber) {
-            receiptHTML += `<div class="receipt-item-details" style="margin-left: 10px;">IMEI: ${escapeHtml(item.IMEINumber)}</div>`;
-        }
-        if (item.SerialNumber) {
-            receiptHTML += `<div class="receipt-item-details" style="margin-left: 10px;">Serial: ${escapeHtml(item.SerialNumber)}</div>`;
-        }
-    });
-    
-    receiptHTML += `
-            <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-            <div class="receipt-row">
-                <span>Subtotal:</span>
-                <span>₱${formatNumber(subtotal)}</span>
-            </div>
-            <div class="receipt-row">
-                <span>Tax (12%):</span>
-                <span>₱${formatNumber(tax)}</span>
-            </div>
-            <div class="receipt-row receipt-total">
-                <strong>TOTAL:</strong>
-                <strong>₱${formatNumber(total)}</strong>
-            </div>
-            <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-            <div class="receipt-row">
-                <span>Payment Method:</span>
-                <span>${(sale.PaymentMethod || 'cash').toUpperCase()}</span>
-            </div>
+            <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            <div class="receipt-row"><span>Receipt No:</span><span><strong>${escapeHtml(sale.ReceiptNo)}</strong></span></div>
+            <div class="receipt-row"><span>Date:</span><span>${saleDate} ${saleTime}</span></div>
+            <div class="receipt-row"><span>Customer:</span><span>${escapeHtml(sale.CustomerName || 'Walk-in Customer')}</span></div>
+            ${productsHtml}
+            <div class="receipt-row"><span>Subtotal:</span><span>₱${formatNumber(subtotal)}</span></div>
+            <div class="receipt-row"><span>Tax (12%):</span><span>₱${formatNumber(tax)}</span></div>
+            <div class="receipt-row receipt-total"><strong>TOTAL:</strong><strong>₱${formatNumber(total)}</strong></div>
+            <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            <div class="receipt-row"><span>Payment Method:</span><span>${(sale.PaymentMethod || 'cash').toUpperCase()}</span></div>
     `;
     
     if (sale.PaymentMethod === 'cash') {
         const received = parseFloat(sale.AmountReceived) || total;
         const change = parseFloat(sale.ChangeAmount) || (received - total);
         receiptHTML += `
-            <div class="receipt-row">
-                <span>Amount Received:</span>
-                <span>₱${formatNumber(received)}</span>
-            </div>
-            <div class="receipt-row">
-                <span>Change:</span>
-                <span>₱${formatNumber(change)}</span>
-            </div>
+            <div class="receipt-row"><span>Amount Received:</span><span>₱${formatNumber(received)}</span></div>
+            <div class="receipt-row"><span>Change:</span><span>₱${formatNumber(change)}</span></div>
         `;
     }
     
     receiptHTML += `
-            <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-            <div class="receipt-footer">
-                Cashier: ${escapeHtml(sale.CreatedBy || 'Admin')}<br>
+            <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            <div class="receipt-footer text-center mt-2">
+                Cashier: ${escapeHtml(cashierName)}<br>
                 Thank you for your purchase!<br>
                 Please come again
             </div>
@@ -883,65 +672,63 @@ function generateReceiptHTML(data) {
     document.getElementById('transactionDetails').innerHTML = receiptHTML;
 }
 
-async function viewTransaction(saleId) {
-    const modalEl = document.getElementById('transactionModal');
-    const modal = new bootstrap.Modal(modalEl);
-    
-    document.getElementById('transactionDetails').innerHTML = `
-        <div class="text-center py-4">
-            <div class="loading-spinner"></div> Loading...
-        </div>
-    `;
-    
-    modal.show();
-    await loadTransactionDetails(saleId);
-}
-
-function printTransaction() {
+function printTransactionReceipt() {
+    const content = document.getElementById('transactionDetails').innerHTML;
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
+        <!DOCTYPE html>
         <html>
         <head>
-            <title>Receipt</title>
+            <title>SIDJAN - Sales Receipt</title>
             <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
                     font-family: 'Courier New', monospace;
-                    padding: 20px;
+                    margin: 0;
+                    padding: 0;
+                    background: white;
+                }
+                .receipt-container {
                     display: flex;
                     justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background: white;
+                    width: 100%;
+                    padding-top: 0;
                 }
                 .receipt-content {
                     max-width: 350px;
                     width: 100%;
-                    margin: 0 auto;
+                    margin: 0 30px;
                     font-size: 12px;
                 }
                 .receipt-header { text-align: center; margin-bottom: 15px; }
-                .receipt-header h6 { margin: 0; font-weight: bold; }
+                .receipt-header h3 { margin: 0; font-size: 20px; font-weight: bold; }
                 .receipt-header small { font-size: 10px; color: #666; }
                 .receipt-line-dashed { text-align: center; letter-spacing: 2px; color: #666; margin: 5px 0; }
                 .receipt-row { display: flex; justify-content: space-between; margin: 5px 0; }
-                .receipt-item { display: flex; justify-content: space-between; margin: 3px 0; }
-                .receipt-item-details { font-size: 10px; color: #666; margin-left: 10px; margin-bottom: 5px; }
-                .receipt-total { border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 10px; }
+                .receipt-total { border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 10px; font-weight: bold; }
                 .receipt-footer { text-align: center; margin-top: 15px; font-size: 10px; }
-                .fw-bold { font-weight: bold; }
-                .badge-serialized {
-                    background: #4f9eff;
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 12px;
-                    font-size: 9px;
-                    margin-left: 5px;
+                .text-center { text-align: center; }
+                .mt-2 { margin-top: 10px; }
+                .text-danger { color: #dc3545; }
+                .text-success { color: #28a745; }
+                @media print {
+                    body { 
+                        padding: 0; 
+                        margin: 0;
+                    }
+                    .receipt-content { 
+                        margin: 0 30px;
+                    }
+                    @page {
+                        margin: 0;
+                    }
                 }
             </style>
         </head>
         <body>
-            ${currentReceiptHTML}
+            <div class="receipt-container">
+                ${content}
+            </div>
             <script>
                 window.onload = function() {
                     window.print();
@@ -953,26 +740,77 @@ function printTransaction() {
     `);
     printWindow.document.close();
 }
+// Also update the viewTransaction function to use the new modal
+async function viewTransaction(saleId) {
+    const modalEl = document.getElementById('transactionModal');
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById('transactionDetails').innerHTML = `
+        <div class="text-center py-4">
+            <div class="loading-spinner"></div> Loading receipt...
+        </div>
+    `;
+    modal.show();
+    await loadTransactionDetails(saleId);
+}
+
+// PRINT FUNCTION - CENTERED ON PAGE
+function printReceipt() {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>SIDJAN - Receipt</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Courier New', monospace;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                padding: 20px;
+                background: white;
+            }
+            .receipt-container { display: flex; justify-content: center; align-items: center; width: 100%; }
+            .receipt-content { max-width: 350px; width: 100%; margin: 0 auto; font-size: 12px; }
+            .receipt-header { text-align: center; margin-bottom: 15px; }
+            .receipt-header h3 { margin: 0; font-size: 20px; font-weight: bold; }
+            .receipt-header small { font-size: 10px; color: #666; }
+            .receipt-line-dashed { text-align: center; letter-spacing: 2px; color: #666; margin: 5px 0; }
+            .receipt-row { display: flex; justify-content: space-between; margin: 5px 0; }
+            .receipt-total { border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 10px; font-weight: bold; }
+            .receipt-footer { text-align: center; margin-top: 15px; font-size: 10px; }
+            .text-center { text-align: center; }
+            .mt-2 { margin-top: 10px; }
+            @media print { body { padding: 0; margin: 0; } }
+        </style>
+        </head>
+        <body>
+            <div class="receipt-container">${currentReceiptHTML}</div>
+            <script>
+                window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
 
 async function refreshTransactions() {
-    const refreshBtn = document.querySelector('.card-header .btn-primary');
-    const originalHtml = refreshBtn.innerHTML;
-    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-    refreshBtn.disabled = true;
-    
+    const btn = document.querySelector('.card-header .btn-primary');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    btn.disabled = true;
     await loadTransactions();
     await loadTodaySales();
-    
-    refreshBtn.innerHTML = originalHtml;
-    refreshBtn.disabled = false;
+    btn.innerHTML = original;
+    btn.disabled = false;
     showToast('Transactions refreshed', 'success');
 }
 
-function printReport() {
-    window.print();
-}
-
-function showToast(message, type = 'success') {
+function printReport() { window.print(); }
+function showToast(msg, type) {
     let container = document.querySelector('.toast-custom-container');
     if (!container) {
         container = document.createElement('div');
@@ -980,28 +818,13 @@ function showToast(message, type = 'success') {
         container.style.zIndex = '1100';
         document.body.appendChild(container);
     }
-    
     const toast = document.createElement('div');
     toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} show`;
-    toast.setAttribute('role', 'alert');
     toast.style.minWidth = '250px';
     toast.style.marginBottom = '10px';
-    
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    `;
-    
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
     container.appendChild(toast);
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
-    
+    setTimeout(() => toast.remove(), 3000);
     toast.querySelector('.btn-close').addEventListener('click', () => toast.remove());
 }
 
@@ -1015,28 +838,10 @@ function escapeHtml(text) {
 document.addEventListener('DOMContentLoaded', function() {
     loadTransactions();
     loadTodaySales();
-    setDefaultDates();
-    
+    const today = new Date().toISOString().split('T')[0];
+    if (document.getElementById('startDate') && !document.getElementById('startDate').value) document.getElementById('startDate').value = today;
+    if (document.getElementById('endDate') && !document.getElementById('endDate').value) document.getElementById('endDate').value = today;
     document.getElementById('startDate').addEventListener('change', filterTransactions);
     document.getElementById('endDate').addEventListener('change', filterTransactions);
 });
-
-function setDefaultDates() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayFormatted = `${year}-${month}-${day}`;
-    
-    const startDateInput = document.getElementById('startDate');
-    const endDateInput = document.getElementById('endDate');
-    
-    if (startDateInput && !startDateInput.value) {
-        startDateInput.value = todayFormatted;
-    }
-    
-    if (endDateInput && !endDateInput.value) {
-        endDateInput.value = todayFormatted;
-    }
-}
 </script>

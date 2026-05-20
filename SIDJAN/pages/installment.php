@@ -605,6 +605,22 @@
         background: #059669;
     }
     
+    .print-receipt-btn {
+        background: #4f9eff;
+        color: white;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        transition: all 0.2s;
+        margin-left: 5px;
+    }
+    
+    .print-receipt-btn:hover {
+        background: #2563eb;
+    }
+    
     /* Customer Modal */
     .customer-list-modal {
         max-height: 400px;
@@ -863,9 +879,17 @@
                         <div class="col-md-3">
                             <label class="form-label small">Number of Months</label>
                             <select id="months" class="form-select form-select-sm" onchange="calculateTotal()">
+                                <option value="1">1 month</option>
+                                <option value="2">2 months</option>
                                 <option value="3">3 months</option>
+                                <option value="4">4 months</option>
+                                <option value="5">5 months</option>
                                 <option value="6">6 months</option>
+                                <option value="7">7 months</option>
+                                <option value="8">8 months</option>
                                 <option value="9">9 months</option>
+                                <option value="10">10 months</option>
+                                <option value="11">11 months</option>
                                 <option value="12" selected>12 months</option>
                                 <option value="18">18 months</option>
                                 <option value="24">24 months</option>
@@ -1061,6 +1085,27 @@
     </div>
 </div>
 
+<!-- Summary Receipt Modal (for down payment balance and monthly payment) -->
+<div class="modal fade" id="summaryReceiptModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4f9eff, #2563eb); color: white;">
+                <h5 class="modal-title"><i class="fas fa-receipt"></i> Installment Receipt</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="summaryReceiptContent" style="max-height: 70vh; overflow-y: auto;">
+                <div class="text-center py-4">Loading summary...</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="printSummaryReceipt()">
+                    <i class="fas fa-print"></i> Print Receipt
+                </button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // API Configuration
 const API_URL = '/SIDJAN/datafetcher/installmentdata.php';
@@ -1079,6 +1124,7 @@ let itemsPerPage = 10;
 let currentDetailsModal = null;
 let currentPaymentModal = null;
 let currentReceiptModal = null;
+let currentSummaryReceiptModal = null;
 let currentConfirmModal = null;
 let productUnits = {};
 let unitSearchTerms = {};
@@ -1890,7 +1936,7 @@ function displayInstallmentsTable() {
     const paginated = filteredInstallments.slice(start, start + itemsPerPage);
     
     if (paginated.length === 0) { 
-        tbody.innerHTML = '</tr><td colspan="9" class="text-center text-muted">No installment records found<\/td><\/tr>'; 
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No installment records found<\/td><\/tr>'; 
         document.getElementById('pagination').innerHTML = ''; 
         return; 
     }
@@ -1915,7 +1961,10 @@ function displayInstallmentsTable() {
             <td>₱${formatNumber(inst.PaidAmount)}<\/td>
             <td>₱${formatNumber(inst.RemainingBalance)}<\/td>
             <td><span class="${statusClass}">${statusText}<\/span><\/td>
-            <td><button class="pay-btn" onclick="event.stopPropagation(); viewInstallmentDetails(${inst.InstallmentID})"><i class="fas fa-eye"></i> View<\/button><\/td>
+            <td>
+                <button class="pay-btn" onclick="event.stopPropagation(); viewInstallmentDetails(${inst.InstallmentID})"><i class="fas fa-eye"></i> View<\/button>
+                <button class="print-receipt-btn" onclick="event.stopPropagation(); openSummaryReceipt(${inst.InstallmentID})"><i class="fas fa-print"></i> Print Receipt<\/button>
+            <\/td>
         <\/tr>`;
     }).join('');
     
@@ -1951,7 +2000,7 @@ function showInstallmentDetails(installment, payments) {
         <\/div>
         <div class="col-md-6">
             <strong>Product(s):</strong> ${installment.ProductName}<br>
-            <strong>Total Amount:</strong> ₱${formatNumber(installment.TotalAmount)}<br>
+            <strong>Total Amount:</strong> ₱${formatNumber(installment.ProductPrice)}<br>
             <strong>Down Payment:</strong> ₱${formatNumber(installment.DownPayment)}<br>
             <strong>Monthly Payment:</strong> ₱${formatNumber(installment.MonthlyPayment)}<br>
             <strong>Paid Amount:</strong> ₱${formatNumber(installment.PaidAmount)}<br>
@@ -2010,6 +2059,136 @@ function showInstallmentDetails(installment, payments) {
     if (currentDetailsModal) { currentDetailsModal.dispose(); }
     currentDetailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
     currentDetailsModal.show();
+}
+
+// ============================================
+// SUMMARY RECEIPT FUNCTION (Down Payment Balance and Monthly Payment)
+// ============================================
+
+async function openSummaryReceipt(installmentId) {
+    const result = await apiCall(API_URL, `getInstallmentById&id=${installmentId}`);
+    if (result.success && result.data) {
+        const installment = result.data;
+        const now = new Date();
+        const cashierName = '<?php echo $_SESSION["NAME"] ?? "Admin"; ?>';
+        
+        // Parse products from installment
+        let productsHtml = '';
+        if (installment.Products && installment.Products.length > 0) {
+            productsHtml = '<div class="receipt-line-dashed">- - - - - - - - - - - - -</div>';
+            productsHtml += '<div style="font-weight: bold; margin-bottom: 5px;">Products Purchased:</div>';
+            installment.Products.forEach(product => {
+                productsHtml += `
+                    <div class="receipt-row" style="font-size: 10px;">
+                        <span>${escapeHtml(product.ProductName)} ${product.UnitNumber ? `(Unit #${product.UnitNumber})` : `(x${product.Quantity})`}</span>
+                        <span>₱${formatNumber(product.Price)}</span>
+                    </div>
+                `;
+                if (product.IMEINumber) {
+                    productsHtml += `<div class="receipt-row" style="font-size: 9px; color: #666;"><span>IMEI:</span><span>${product.IMEINumber}</span></div>`;
+                }
+                if (product.SerialNumber) {
+                    productsHtml += `<div class="receipt-row" style="font-size: 9px; color: #666;"><span>Serial:</span><span>${product.SerialNumber}</span></div>`;
+                }
+            });
+            productsHtml += '<div class="receipt-line-dashed">- - - - - - - - - - - - -</div>';
+        } else if (installment.ProductName) {
+            // Fallback for older data structure
+            productsHtml = `
+                <div class="receipt-line-dashed">- - - - - - - - - - - - -</div>
+                <div class="receipt-row"><span>Product:</span><span>${escapeHtml(installment.ProductName)}</span></div>
+                <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            `;
+        }
+        
+        const receiptHtml = `
+            <div class="receipt-content">
+                <div class="receipt-header">
+                    <h3>SIDJAN</h3>
+                    <small>Electronic Products Trading</small><br>
+                    <small><?php echo $_SESSION["branch_name"] ?? "-"; ?></small>
+                </div>
+                <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+                <div class="receipt-row"><span>Date:</span><span>${now.toLocaleString()}</span></div>
+                <div class="receipt-row"><span>Receipt No:</span><span><strong>${installment.InstallmentNo || 'N/A'}</strong></span></div>
+                <div class="receipt-row"><span>Customer:</span><span>${escapeHtml(installment.CustomerName)}</span></div>
+                ${productsHtml}
+                <div class="receipt-row"><span>Total Amount:</span><span>₱${formatNumber(installment.ProductPrice)}</span></div>
+                <div class="receipt-row"><span>Down Payment:</span><span>₱${formatNumber(installment.DownPayment)}</span></div>
+                <div class="receipt-row"><span>Loan Amount:</span><span>₱${formatNumber(installment.ProductPrice - installment.DownPayment)}</span></div>
+                <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+                <div class="receipt-row receipt-total"><strong>Monthly Payment:</strong><strong class="text-success">₱${formatNumber(installment.MonthlyPayment)}</strong></div>
+                <div class="receipt-row"><span>Term:</span><span>${installment.Months || 'N/A'} months</span></div>
+                <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+                <div class="receipt-row"><span>Remaining Balance:</span><span>₱${formatNumber(installment.RemainingBalance)}</span></div>
+                <div class="receipt-footer text-center mt-2">
+                    Cashier: ${cashierName}<br>
+                    Thank you for choosing SIDJAN!<br>
+                    <small>Please pay your monthly installment on time.</small>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('summaryReceiptContent').innerHTML = receiptHtml;
+        
+        if (currentSummaryReceiptModal) { 
+            currentSummaryReceiptModal.dispose(); 
+        }
+        currentSummaryReceiptModal = new bootstrap.Modal(document.getElementById('summaryReceiptModal'), {
+            backdrop: 'static',
+            keyboard: false
+        });
+        currentSummaryReceiptModal.show();
+    } else {
+        showAlertPopup('Error', 'Failed to load installment summary', 'error');
+    }
+}
+
+function printSummaryReceipt() {
+    const content = document.getElementById('summaryReceiptContent').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Installment Summary Receipt</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Courier New', monospace;
+                    background: white;
+                }
+                .receipt-content {
+                    max-width: 350px;
+                    width: 100%;
+                    margin: 0 auto;
+                    font-size: 12px;
+                }
+                .receipt-header { text-align: center; margin-bottom: 15px; }
+                .receipt-header h3 { margin: 0; font-size: 20px; font-weight: bold; }
+                .receipt-header small { font-size: 10px; color: #666; }
+                .receipt-line-dashed { text-align: center; letter-spacing: 2px; color: #666; margin: 5px 0; }
+                .receipt-row { display: flex; justify-content: space-between; margin: 5px 0; }
+                .receipt-total { border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 10px; font-weight: bold; }
+                .receipt-footer { text-align: center; margin-top: 15px; font-size: 10px; }
+                .text-center { text-align: center; }
+                .mt-2 { margin-top: 10px; }
+                .text-danger { color: #dc3545; }
+                .text-success { color: #28a745; }
+            </style>
+        </head>
+        <body>
+            ${content}
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    w.document.close();
 }
 
 // ============================================
@@ -2220,7 +2399,7 @@ function generateAndShowReceipt(installmentId, paymentNo, amount, penaltyAmount,
                         <small>Electronic Products Trading</small><br>
                         <small><?php echo $_SESSION["branch_name"] ?? "-"; ?></small>
                     </div>
-                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
+                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - -</div>
                     <div class="receipt-row"><span>Receipt No:</span><span><strong>PAY-${now.getTime()}</strong></span></div>
                     <div class="receipt-row"><span>Date:</span><span>${paidDate}</span></div>
                     <div class="receipt-row"><span>Customer:</span><span>${escapeHtml(customerName)}</span></div>

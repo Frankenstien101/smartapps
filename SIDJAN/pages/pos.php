@@ -682,6 +682,53 @@
         margin-left: 8px;
     }
     
+    .receipt-content {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    max-width: 350px;
+    margin: 0 auto;
+    word-wrap: break-word;
+}
+
+.receipt-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.receipt-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.receipt-header small {
+    font-size: 10px;
+    color: #666;
+}
+
+.receipt-line-dashed {
+    text-align: center;
+    letter-spacing: 2px;
+    color: #666;
+    margin: 5px 0;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 5px 0;
+}
+
+.receipt-footer {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 10px;
+}
+
+.mt-2 {
+    margin-top: 10px;
+}
+
     @media (max-width: 768px) {
         .cart-item {
             flex-wrap: wrap;
@@ -700,6 +747,8 @@
             flex-direction: column;
             align-items: stretch;
         }
+
+        
     }
 </style>
 
@@ -839,17 +888,21 @@
     </div>
 </div>
 
-<!-- Receipt Modal -->
-<div class="modal fade" id="receiptModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
+<!-- Replace the Receipt Modal with this -->
+<div class="modal fade" id="receiptModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header" style="background: white; color: #1a2a3a;">
-                <h5 class="modal-title">Receipt</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #4f9eff, #2563eb); color: white;">
+                <h5 class="modal-title"><i class="fas fa-receipt"></i> Sales Receipt</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="receiptContent"></div>
+            <div class="modal-body" id="receiptContent" style="max-height: 70vh; overflow-y: auto;">
+                <div class="text-center py-4">Loading receipt...</div>
+            </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" onclick="printReceipt()"><i class="fas fa-print"></i> Print</button>
+                <button class="btn btn-primary" onclick="printReceipt()">
+                    <i class="fas fa-print"></i> Print Receipt
+                </button>
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -1570,98 +1623,138 @@
     // ============================================
 
     function generateReceipt() {
-        const now = new Date();
-        const receiptNumber = 'INV-' + now.getTime();
-        const customerName = document.getElementById('customerName').value || 'Walk-in Customer';
-        const total = parseFloat(document.getElementById('totalAmount').innerText.replace('₱', '').replace(/,/g, '')) || 0;
-
-        let html = `
-        <div class="receipt-content">
-            <div class="receipt-line"><strong>SIDJAN ELECTRONIC</strong></div>
-            <div class="receipt-line">${'-'.repeat(30)}</div>
-            <div class="receipt-line">${now.toLocaleString()}</div>
-            <div class="receipt-line">Receipt: ${receiptNumber}</div>
-            <div class="receipt-line">Customer: ${escapeHtml(customerName)}</div>
-            <div class="receipt-line">${'-'.repeat(30)}</div>
-    `;
-
+    const now = new Date();
+    const receiptNumber = 'INV-' + now.getTime();
+    const customerName = document.getElementById('customerName').value || 'Walk-in Customer';
+    const total = parseFloat(document.getElementById('totalAmount').innerText.replace('₱', '').replace(/,/g, '')) || 0;
+    const received = parseFloat(document.getElementById('amountReceived').value) || 0;
+    const change = received - total;
+    const cashierName = '<?php echo $_SESSION["NAME"] ?? "Admin"; ?>';
+    const branchName = '<?php echo $_SESSION["branch_name"] ?? "Main Branch"; ?>';
+    
+    // Generate products HTML
+    let productsHtml = '';
+    if (cart && cart.length > 0) {
+        productsHtml = '<div class="receipt-line-dashed">- - - - - - - - - - - -</div>';
+        productsHtml += '<div style="font-weight: bold; margin-bottom: 5px;">Products Purchased:</div>';
         cart.forEach(item => {
-            html += `
-            <div class="d-flex justify-content-between">
-                <span>${escapeHtml(item.name)} x${item.quantity}</span>
-                <span>₱${formatNumber(item.total)}</span>
-            </div>
-        `;
-            if (item.unitNumber) {
-                html += `<div class="small text-muted">Unit #${item.unitNumber}</div>`;
-            }
+            productsHtml += `
+                <div class="receipt-row" style="font-size: 10px;">
+                    <span>${escapeHtml(item.name)} ${item.unitNumber ? `(Unit #${item.unitNumber})` : `(x${item.quantity})`}</span>
+                    <span>₱${formatNumber(item.total)}</span>
+                </div>
+                <div class="receipt-row" style="font-size: 9px; color: #666;">
+                    <span>${item.quantity} x ₱${formatNumber(item.price)}</span>
+                    <span>Code: ${escapeHtml(item.productCode || 'N/A')}</span>
+                </div>
+            `;
+            
             if (item.imei) {
-                html += `<div class="small text-muted">IMEI: ${item.imei}</div>`;
+                productsHtml += `<div class="receipt-row" style="font-size: 9px; color: #666;"><span>IMEI:</span><span>${escapeHtml(item.imei)}</span></div>`;
             }
             if (item.serial) {
-                html += `<div class="small text-muted">Serial: ${item.serial}</div>`;
+                productsHtml += `<div class="receipt-row" style="font-size: 9px; color: #666;"><span>Serial:</span><span>${escapeHtml(item.serial)}</span></div>`;
             }
         });
-
-        html += `
-            <div class="receipt-line">${'-'.repeat(30)}</div>
-            <div class="d-flex justify-content-between">
-                <strong>TOTAL:</strong>
-                <strong>₱${formatNumber(total)}</strong>
+        productsHtml += '<div class="receipt-line-dashed">- - - - - - - - - - - -</div>';
+    }
+    
+    let receiptHTML = `
+        <div class="receipt-content">
+            <div class="receipt-header">
+                <h3>SIDJAN</h3>
+                <small>Electronic Products Trading</small><br>
+                <small>${branchName}</small>
             </div>
-            <div class="receipt-line">${'-'.repeat(30)}</div>
-            <div class="receipt-line">Payment: ${selectedPaymentMethod.toUpperCase()}</div>
+            <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            <div class="receipt-row"><span>Receipt No:</span><span><strong>${receiptNumber}</strong></span></div>
+            <div class="receipt-row"><span>Date:</span><span>${now.toLocaleString()}</span></div>
+            <div class="receipt-row"><span>Customer:</span><span>${escapeHtml(customerName)}</span></div>
+            ${productsHtml}
+            <div class="receipt-row"><span>Total Amount:</span><span>₱${formatNumber(total)}</span></div>
+            <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            <div class="receipt-row"><span>Payment Method:</span><span>${selectedPaymentMethod.toUpperCase()}</span></div>
     `;
-
-        if (selectedPaymentMethod === 'cash') {
-            const received = parseFloat(document.getElementById('amountReceived').value) || 0;
-            const change = received - total;
-            html += `
-            <div class="d-flex justify-content-between">
-                <span>Amount Received:</span>
-                <span>₱${formatNumber(received)}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span>Change:</span>
-                <span>₱${formatNumber(change)}</span>
-            </div>
+    
+    if (selectedPaymentMethod === 'cash') {
+        receiptHTML += `
+            <div class="receipt-row"><span>Amount Received:</span><span>₱${formatNumber(received)}</span></div>
+            <div class="receipt-row"><span>Change:</span><span>₱${formatNumber(change)}</span></div>
         `;
-        }
-
-        html += `
-            <div class="receipt-line">${'-'.repeat(30)}</div>
-            <div class="receipt-line">Thank you for your purchase!</div>
-            <div class="receipt-line">Please come again</div>
+    }
+    
+    receiptHTML += `
+            <div class="receipt-line-dashed">- - - - - - - - - - - -</div>
+            <div class="receipt-footer text-center mt-2">
+                Cashier: ${cashierName}<br>
+                Thank you for your purchase!<br>
+                Please come again
+            </div>
         </div>
     `;
-
-        document.getElementById('receiptContent').innerHTML = html;
-        new bootstrap.Modal(document.getElementById('receiptModal')).show();
-    }
-
-    function printReceipt() {
-        const content = document.getElementById('receiptContent').innerHTML;
-        const w = window.open('', '_blank');
-        w.document.write(`
+    
+    document.getElementById('receiptContent').innerHTML = receiptHTML;
+    const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+    receiptModal.show();
+}
+  function printReceipt() {
+    const content = document.getElementById('receiptContent').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
         <html>
         <head>
-            <title>Receipt</title>
+            <title>SIDJAN - Sales Receipt</title>
             <style>
-                body { font-family: monospace; padding: 20px; }
-                .receipt-content { max-width: 300px; margin: 0 auto; }
-                .d-flex { display: flex; justify-content: space-between; }
-                .small { font-size: 10px; }
-                .text-muted { color: #6c757d; }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Courier New', monospace;
+                    margin: 0;
+                    padding: 0;
+                    background: white;
+                }
+                .receipt-container {
+                    display: flex;
+                    justify-content: center;
+                    width: 100%;
+                }
+                .receipt-content {
+                    max-width: 350px;
+                    width: 100%;
+                    margin: 0 30px;
+                    font-size: 12px;
+                }
+                .receipt-header { text-align: center; margin-bottom: 15px; }
+                .receipt-header h3 { margin: 0; font-size: 20px; font-weight: bold; }
+                .receipt-header small { font-size: 10px; color: #666; }
+                .receipt-line-dashed { text-align: center; letter-spacing: 2px; color: #666; margin: 5px 0; }
+                .receipt-row { display: flex; justify-content: space-between; margin: 5px 0; }
+                .receipt-total { border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 10px; font-weight: bold; }
+                .receipt-footer { text-align: center; margin-top: 15px; font-size: 10px; }
+                .text-center { text-align: center; }
+                .mt-2 { margin-top: 10px; }
+                .text-danger { color: #dc3545; }
+                .text-success { color: #28a745; }
+                @media print {
+                    body { padding: 0; margin: 0; }
+                    .receipt-content { margin: 0 30px; }
+                    @page { margin: 0; }
+                }
             </style>
         </head>
         <body>
-            <div class="receipt-content">${content}</div>
-            <script>window.print(); setTimeout(function() { window.close(); }, 500);<\/script>
+            <div class="receipt-container">${content}</div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                };
+            <\/script>
         </body>
         </html>
     `);
-        w.document.close();
-    }
+    printWindow.document.close();
+}
 
     // ============================================
     // HELPER FUNCTIONS
