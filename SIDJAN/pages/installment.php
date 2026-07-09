@@ -1005,19 +1005,33 @@
                 <input type="hidden" id="paymentPaymentNo">
                 
                 <div class="mb-3">
-                    <label class="form-label">Regular Amount</label>
-                    <input type="text" id="paymentRegularAmount" class="form-control" readonly style="background: #f8fafc;">
+                    <label class="form-label">Regular Amount Due</label>
+                    <input type="text" id="paymentRegularAmount" class="form-control" readonly style="background: #f8fafc; font-weight: bold;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Current Credit Balance (Wallet)</label>
+                    <input type="text" id="paymentCreditBalance" class="form-control" readonly style="background: #f0fdf4; color: #166534; font-weight: bold;">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="useCreditBalance" onchange="toggleCreditBalance()">
+                        <label class="form-check-label" for="useCreditBalance">
+                            Use Credit Balance to pay this installment
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="mb-3" id="penaltyRow" style="display: none;">
                     <label class="form-label">Penalty Amount <span class="text-danger">(Late Payment)</span></label>
-                    <input type="text" id="paymentPenaltyAmount" class="form-control" readonly style="background: #fef3c7; color: #d97706;">
+                    <input type="text" id="paymentPenaltyAmount" class="form-control" readonly style="background: #fef3c7; color: #d97706; font-weight: bold;">
                 </div>
                 
                 <div class="mb-3">
-                    <label class="form-label">Total Amount Due</label>
-                    <input type="text" id="paymentAmount" class="form-control" readonly style="background: #f8fafc; font-weight: bold;">
+                    <label class="form-label">Amount Given by Customer</label>
+                    <input type="number" id="paymentAmount" class="form-control" style="font-weight: bold;" 
+                           oninput="calculatePaymentSummary()" placeholder="Enter amount received">
                 </div>
+                
+                <div id="paymentSummaryBox" class="payment-summary-box" style="display: none;"></div>
                 
                 <div class="mb-3">
                     <label class="form-label">Payment Method</label>
@@ -1037,8 +1051,6 @@
                     <label class="form-label">Notes</label>
                     <textarea id="paymentNotes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea>
                 </div>
-                
-                <div id="paymentSummaryBox" class="payment-summary-box" style="display: none;"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1852,56 +1864,84 @@ function generatePaymentSchedule(monthlyPayment, months) {
     container.innerHTML = html;
 }
 
+let isCreatingInstallment = false;   // Global flag to prevent duplicate submissions
+
 async function createInstallment() {
+    if (isCreatingInstallment) {
+        console.log("⚠️ Installment creation already in progress...");
+        return;
+    }
+
     const customerName = document.getElementById('customerName').value.trim();
     if (!customerName) { 
         showAlertPopup('Validation Error', 'Please enter customer name', 'warning'); 
         return; 
     }
+    
     if (selectedProducts.length === 0) { 
         showAlertPopup('Validation Error', 'Please select at least one product', 'warning'); 
         return; 
     }
+
+    // Lock the button
+    isCreatingInstallment = true;
+    const createBtn = document.getElementById('createBtn');
+    const originalBtnText = createBtn.innerHTML;
     
-    const totalProductPrice = selectedProducts.reduce((sum, p) => sum + (p.price * p.quantity), 0);
-    const downPayment = parseFloat(document.getElementById('downPayment').value) || 0;
-    const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
-    const penaltyRate = parseFloat(document.getElementById('penaltyRate').value) || 0;
-    const months = parseInt(document.getElementById('months').value);
-    
-    const data = {
-        customer_name: customerName,
-        customer_phone: document.getElementById('customerPhone').value,
-        customer_address: document.getElementById('customerAddress').value,
-        products: selectedProducts.map(p => ({ 
-            product_id: p.id, 
-            product_name: p.name, 
-            product_code: p.code, 
-            quantity: p.quantity, 
-            price: p.price, 
-            total: p.price * p.quantity,
-            unit_id: p.unitId || null,
-            unit_number: p.unitNumber || null,
-            imei: p.imei || '',
-            serial: p.serial || '',
-            is_bulk: p.isBulk || false
-        })),
-        total_product_price: totalProductPrice,
-        down_payment: downPayment,
-        interest_rate: interestRate,
-        penalty_rate: penaltyRate,
-        months: months,
-        notes: document.getElementById('notes').value
-    };
-    
-    const result = await apiCall(API_URL, 'createInstallment', 'POST', data);
-    if (result.success) {
-        showAlertPopup('Success', result.message, 'success');
-        resetForm();
-        await refreshAllData();
-        await loadProducts();
-    } else {
-        showAlertPopup('Error', result.message, 'error');
+    createBtn.disabled = true;
+    createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Installment...';
+
+    try {
+        const totalProductPrice = selectedProducts.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+        const downPayment = parseFloat(document.getElementById('downPayment').value) || 0;
+        const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
+        const penaltyRate = parseFloat(document.getElementById('penaltyRate').value) || 0;
+        const months = parseInt(document.getElementById('months').value);
+
+        const data = {
+            customer_name: customerName,
+            customer_phone: document.getElementById('customerPhone').value.trim(),
+            customer_address: document.getElementById('customerAddress').value.trim(),
+            products: selectedProducts.map(p => ({ 
+                product_id: p.id, 
+                product_name: p.name, 
+                product_code: p.code, 
+                quantity: p.quantity, 
+                price: p.price, 
+                total: p.price * p.quantity,
+                unit_id: p.unitId || null,
+                unit_number: p.unitNumber || null,
+                imei: p.imei || '',
+                serial: p.serial || '',
+                is_bulk: p.isBulk || false
+            })),
+            total_product_price: totalProductPrice,
+            down_payment: downPayment,
+            interest_rate: interestRate,
+            penalty_rate: penaltyRate,
+            months: months,
+            notes: document.getElementById('notes').value.trim()
+        };
+
+        const result = await apiCall(API_URL, 'createInstallment', 'POST', data);
+
+        if (result.success) {
+            showAlertPopup('Success', result.message || 'Installment plan created successfully!', 'success');
+            resetForm();
+            await refreshAllData();
+            await loadProducts();
+        } else {
+            showAlertPopup('Error', result.message || 'Failed to create installment', 'error');
+        }
+
+    } catch (error) {
+        console.error("Create Installment Error:", error);
+        showAlertPopup('Error', 'An unexpected error occurred while creating installment', 'error');
+    } finally {
+        // Always unlock the button
+        isCreatingInstallment = false;
+        createBtn.disabled = false;
+        createBtn.innerHTML = originalBtnText;
     }
 }
 
@@ -1991,13 +2031,16 @@ function showInstallmentDetails(installment, payments) {
     const statusDisplay = isFullyPaid ? 'PAID' : (installment.Status === 'active' ? 'ACTIVE' : 'OVERDUE');
     const statusClass = isFullyPaid ? 'badge-paid' : (installment.Status === 'active' ? 'badge-active' : 'badge-overdue');
     
+    const creditBalance = parseFloat(installment.CreditBalance || 0);
+
     let html = `<div class="row mb-3">
         <div class="col-md-6">
             <strong>Receipt No:</strong> ${installment.InstallmentNo}<br>
             <strong>Customer:</strong> ${escapeHtml(installment.CustomerName)}<br>
             <strong>Phone:</strong> ${installment.CustomerPhone || '-'}<br>
-            <strong>Address:</strong> ${installment.CustomerAddress || '-'}
-        <\/div>
+            <strong>Address:</strong> ${installment.CustomerAddress || '-'}<br>
+            <strong>Credit Balance:</strong> <span class="text-success fw-bold">₱${formatNumber(creditBalance)}</span>
+        </div>
         <div class="col-md-6">
             <strong>Product(s):</strong> ${installment.ProductName}<br>
             <strong>Total Amount:</strong> ₱${formatNumber(installment.ProductPrice)}<br>
@@ -2006,57 +2049,60 @@ function showInstallmentDetails(installment, payments) {
             <strong>Paid Amount:</strong> ₱${formatNumber(installment.PaidAmount)}<br>
             <strong>Remaining Balance:</strong> ₱${formatNumber(installment.RemainingBalance)}<br>
             <strong>Status:</strong> <span class="${statusClass}">${statusDisplay}</span>
-        <\/div>
-    <\/div>
-    <div class="table-responsive">
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Due Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Payment Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>`;
-    
+        </div>
+    </div>`;
+
     if (payments && payments.length > 0) {
+        html += `
+        <h6 class="mt-4 mb-2"><i class="fas fa-history"></i> Payment History</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                        <th>Penalty</th>
+                        <th>Credit Used</th>
+                        <th>Credit</th>
+                        <th>Status</th>
+                        <th>Payment Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
         payments.forEach(payment => {
             const isPaid = payment.Status === 'paid';
             const statusClass = isPaid ? 'badge-paid' : (payment.Status === 'overdue' ? 'badge-overdue' : 'badge-pending');
             const statusText = isPaid ? 'PAID' : (payment.Status === 'overdue' ? 'OVERDUE' : 'PENDING');
             
             html += `<tr>
-                <td>${payment.PaymentNo}<\/td>
-                <td>${payment.DueDate}<\/td>
-                <td>₱${formatNumber(payment.Amount)}<\/td>
-                <td><span class="${statusClass}">${statusText}</span><\/td>
-                <td>${payment.PaymentDate || '-'}<\/td>
+                <td>${payment.PaymentNo}</td>
+                <td>${payment.DueDate}</td>
+                <td>₱${formatNumber(payment.Amount)}</td>
+                <td>₱${formatNumber(payment.PenaltyPaid || 0)}</td>
+                <td class="text-success">₱${formatNumber(payment.CreditUsed || 0)}</td>
+                <td class="text-success">₱${formatNumber(payment.ExcessToWallet || 0)}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+                <td>${payment.PaymentDate || '-'}</td>
                 <td>
                     ${!isPaid && !isFullyPaid ? 
                         `<button class="pay-btn" onclick="openPaymentModal(${installment.InstallmentID}, ${payment.PaymentNo}, ${payment.Amount})">Pay Now</button>` : 
                         (isPaid ? 
-                            `<div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-success" disabled>✓ Paid</button>
-                                <button class="btn btn-sm btn-primary" onclick="viewPaymentReceipt(${installment.InstallmentID}, ${payment.PaymentNo}, ${payment.Amount})">
-                                    <i class="fas fa-print"></i> Print Receipt
-                                </button>
-                            </div>` : 
-                            '-')
-                    }
-                 <\/td>
-            <\/tr>`;
+                            `<button class="btn btn-sm btn-primary" onclick="viewPaymentReceipt(${installment.InstallmentID}, ${payment.PaymentNo}, ${payment.Amount})">
+                                <i class="fas fa-print"></i> Print
+                            </button>` : '-')}
+                </td>
+            </tr>`;
         });
+        
+        html += `</tbody></table></div>`;
     }
-    
-    html += `<\/tbody>
-    <\/table><\/div>`;
     
     modalBody.innerHTML = html;
     
-    if (currentDetailsModal) { currentDetailsModal.dispose(); }
+    if (currentDetailsModal) currentDetailsModal.dispose();
     currentDetailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
     currentDetailsModal.show();
 }
@@ -2191,65 +2237,147 @@ function printSummaryReceipt() {
     w.document.close();
 }
 
+// Global variables
+let currentCreditBalance = 0;
+let currentTotalDue = 0;
+
 // ============================================
-// PAYMENT FUNCTIONS - GLOBAL SCOPE
+// PAYMENT FUNCTIONS
 // ============================================
 
 async function openPaymentModal(installmentId, paymentNo, amount) {
     const result = await apiCall(API_URL, `getInstallmentById&id=${installmentId}`);
     if (result.success && result.data && result.payments) {
         const payment = result.payments.find(p => p.PaymentNo == paymentNo);
-        if (payment) {
-            const dueDate = new Date(payment.DueDate);
-            const today = new Date();
-            let penaltyAmount = 0;
-            
-            if (today > dueDate) {
-                const diffTime = Math.abs(today - dueDate);
-                const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                const monthsOverdue = Math.ceil(daysOverdue / 30);
-                penaltyAmount = amount * (result.data.PenaltyRate / 100) * monthsOverdue;
-            }
-            
-            const totalDue = amount + penaltyAmount;
-            
-            document.getElementById('paymentInstallmentId').value = installmentId;
-            document.getElementById('paymentPaymentNo').value = paymentNo;
-            document.getElementById('paymentRegularAmount').value = '₱' + formatNumber(amount);
-            
-            if (penaltyAmount > 0) {
-                document.getElementById('paymentPenaltyAmount').value = '₱' + formatNumber(penaltyAmount);
-                document.getElementById('penaltyRow').style.display = 'block';
-            } else {
-                document.getElementById('penaltyRow').style.display = 'none';
-            }
-            
-            document.getElementById('paymentAmount').value = '₱' + formatNumber(totalDue);
-            document.getElementById('paymentReference').value = '';
-            document.getElementById('paymentNotes').value = '';
-            document.getElementById('paymentMethod').value = 'cash';
-            window.currentPenaltyAmount = penaltyAmount;
-            
-            const summaryBox = document.getElementById('paymentSummaryBox');
-            summaryBox.innerHTML = `
-                <div class="payment-summary-row"><strong>Regular Amount:</strong> <span>₱${formatNumber(amount)}</span></div>
-                ${penaltyAmount > 0 ? `<div class="payment-summary-row text-danger"><strong>Penalty:</strong> <span>₱${formatNumber(penaltyAmount)}</span></div>` : ''}
-                <div class="payment-summary-row payment-summary-total"><strong>Total to Pay:</strong> <strong class="text-success">₱${formatNumber(totalDue)}</strong></div>
-            `;
-            summaryBox.style.display = 'block';
-            
-            if (currentPaymentModal) { currentPaymentModal.dispose(); }
-            currentPaymentModal = new bootstrap.Modal(document.getElementById('paymentModal'), {
-                backdrop: 'static',
-                keyboard: false
-            });
-            currentPaymentModal.show();
+        if (!payment) return;
+
+        const dueDate = new Date(payment.DueDate);
+        const today = new Date();
+        let penaltyAmount = 0;
+
+        if (today > dueDate) {
+            const diffTime = Math.abs(today - dueDate);
+            const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            penaltyAmount = amount * (result.data.PenaltyRate / 100) * Math.ceil(daysOverdue / 30);
         }
+
+        // Set values
+        document.getElementById('paymentInstallmentId').value = installmentId;
+        document.getElementById('paymentPaymentNo').value = paymentNo;
+        document.getElementById('paymentRegularAmount').value = '₱' + formatNumber(amount);
+        
+        currentCreditBalance = parseFloat(result.data.CreditBalance || 0);
+        document.getElementById('paymentCreditBalance').value = '₱' + formatNumber(currentCreditBalance);
+
+        if (penaltyAmount > 0) {
+            document.getElementById('paymentPenaltyAmount').value = '₱' + formatNumber(penaltyAmount);
+            document.getElementById('penaltyRow').style.display = 'block';
+        } else {
+            document.getElementById('penaltyRow').style.display = 'none';
+        }
+
+        currentTotalDue = amount + penaltyAmount;
+
+        // Default amount given = total due minus available credit
+        const defaultAmount = Math.max(0, currentTotalDue - currentCreditBalance);
+        document.getElementById('paymentAmount').value = formatNumber(defaultAmount);
+
+        document.getElementById('useCreditBalance').checked = currentCreditBalance > 0;
+        
+        // Smart default amount given
+if (currentCreditBalance > 0) {
+    document.getElementById('useCreditBalance').checked = true;
+    const defaultAmount = Math.max(0, currentTotalDue - currentCreditBalance);
+    document.getElementById('paymentAmount').value = formatNumber(defaultAmount);
+} else {
+    document.getElementById('useCreditBalance').checked = false;
+    document.getElementById('paymentAmount').value = formatNumber(currentTotalDue);
+}
+
+        calculatePaymentSummary();
+
+        if (currentPaymentModal) currentPaymentModal.dispose();
+        currentPaymentModal = new bootstrap.Modal(document.getElementById('paymentModal'), { backdrop: 'static' });
+        currentPaymentModal.show();
     }
 }
 
+function toggleCreditBalance() {
+    const useCredit = document.getElementById('useCreditBalance').checked;
+    const regularStr = document.getElementById('paymentRegularAmount').value || '0';
+    const penaltyStr = document.getElementById('paymentPenaltyAmount').value || '0';
+    
+    const regularDue = parseFloat(regularStr.replace(/[₱,]/g, '')) || 0;
+    const penalty = parseFloat(penaltyStr.replace(/[₱,]/g, '')) || 0;
+    const totalDue = roundToTwo(regularDue + penalty);
+
+    if (!useCredit) {
+        // Unchecked → Full amount
+        document.getElementById('paymentAmount').value = formatNumber(totalDue);
+    } else {
+        // Checked → Reduce by credit balance
+        const reducedAmount = Math.max(0, totalDue - currentCreditBalance);
+        document.getElementById('paymentAmount').value = formatNumber(reducedAmount);
+    }
+
+    calculatePaymentSummary();
+}
+
+function calculatePaymentSummary() {
+    let amountGiven = parseFloat(
+        document.getElementById('paymentAmount').value.replace(/[^0-9.-]+/g, '')
+    ) || 0;
+
+    const regularDue = parseFloat(
+        document.getElementById('paymentRegularAmount').value.replace(/[₱,]/g, '')
+    ) || 0;
+    
+    const penalty = parseFloat(
+        document.getElementById('paymentPenaltyAmount').value.replace(/[₱,]/g, '')
+    ) || 0;
+
+    const totalDue = roundToTwo(regularDue + penalty);
+    const useCredit = document.getElementById('useCreditBalance').checked;
+    
+    let creditUsed = 0;
+    let excess = 0;
+
+    if (useCredit && currentCreditBalance > 0) {
+        creditUsed = Math.min(currentCreditBalance, totalDue);
+    }
+
+    const effectiveDue = roundToTwo(totalDue - creditUsed);
+    excess = Math.max(0, roundToTwo(amountGiven - effectiveDue));
+
+    // Update summary
+    let html = `
+        <div class="payment-summary-row"><strong>Regular Due:</strong> <span>₱${formatNumber(regularDue)}</span></div>
+        ${penalty > 0 ? `<div class="payment-summary-row text-danger"><strong>Penalty:</strong> <span>₱${formatNumber(penalty)}</span></div>` : ''}
+        ${creditUsed > 0 ? `<div class="payment-summary-row text-success"><strong>Credit Used:</strong> <span>-₱${formatNumber(creditUsed)}</span></div>` : ''}
+        <div class="payment-summary-row"><strong>Amount Given:</strong> <span>₱${formatNumber(amountGiven)}</span></div>
+    `;
+
+    if (excess > 0) {
+        html += `<div class="payment-summary-row text-success"><strong>Excess → Wallet:</strong> <span>+₱${formatNumber(excess)}</span></div>`;
+    }
+
+    html += `
+        <div class="payment-summary-row payment-summary-total">
+            <strong>Total Applied:</strong> <strong class="text-success">₱${formatNumber(effectiveDue + excess)}</strong>
+        </div>
+    `;
+
+    document.getElementById('paymentSummaryBox').innerHTML = html;
+    document.getElementById('paymentSummaryBox').style.display = 'block';
+}
+
+function roundToTwo(num) {
+    return Math.round(num * 100) / 100;
+}
+
+
 document.getElementById('confirmPaymentBtn').addEventListener('click', async function() {
-    showConfirmPopup('Confirm Payment', 'Are you sure you want to record this payment?', async () => {
+    showConfirmPopup('Confirm Payment', 'Record this payment and update credit balance?', async () => {
         await recordPayment();
     });
 });
@@ -2257,22 +2385,57 @@ document.getElementById('confirmPaymentBtn').addEventListener('click', async fun
 async function recordPayment() {
     const installmentId = document.getElementById('paymentInstallmentId').value;
     const paymentNo = document.getElementById('paymentPaymentNo').value;
-    const regularAmountRaw = document.getElementById('paymentRegularAmount').value;
-    const regularAmount = parseFloat(regularAmountRaw.replace('₱', '').replace(/,/g, '')) || 0;
-    const penaltyAmount = window.currentPenaltyAmount || 0;
+const amountGiven = parseFloat(
+    document.getElementById('paymentAmount').value.replace(/[^0-9.-]+/g, '')
+) || 0;    const useCredit = document.getElementById('useCreditBalance').checked;
+
+    const regularAmount = parseFloat(document.getElementById('paymentRegularAmount').value?.replace(/[₱,]/g, '')) || 0;
+    const penaltyAmount = parseFloat(document.getElementById('paymentPenaltyAmount').value?.replace(/[₱,]/g, '')) || 0;
+
+    const data = {
+        installment_id: parseInt(installmentId),
+        payment_no: parseInt(paymentNo),
+        amount: amountGiven,                    // Amount actually received from customer
+        penalty_paid: penaltyAmount,
+        use_credit_balance: useCredit,
+        payment_method: document.getElementById('paymentMethod').value,
+        reference_no: document.getElementById('paymentReference').value,
+        notes: document.getElementById('paymentNotes').value
+    };
+
+    const confirmBtn = document.getElementById('confirmPaymentBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+    const result = await apiCall(API_URL, 'recordPayment', 'POST', data);
+
+    if (result.success) {
+    showAlertPopup('Success', result.message, 'success');
     
-    if (!installmentId || !paymentNo) { 
-        showAlertPopup('Error', 'Invalid payment data', 'error'); 
-        return; 
+    // Auto refresh current details if modal is open
+    const installmentId = parseInt(document.getElementById('paymentInstallmentId').value);
+    
+    if (currentPaymentModal) {
+        currentPaymentModal.hide();
     }
+
+    // Refresh everything
+    await refreshAllData();
+    await loadInstallments();
     
-    if (penaltyAmount > 0) {
-        showConfirmPopup('Late Payment Penalty', `This payment is overdue. A penalty of ₱${formatNumber(penaltyAmount)} will be applied.\n\nDo you want to proceed?`, async () => {
-            await processPayment(installmentId, paymentNo, regularAmount, penaltyAmount);
-        });
+    // Re-open details modal with updated data
+    if (installmentId) {
+        setTimeout(() => {
+            viewInstallmentDetails(installmentId);
+        }, 600);
+    }
+
     } else {
-        await processPayment(installmentId, paymentNo, regularAmount, penaltyAmount);
+        showAlertPopup('Error', result.message || 'Payment failed', 'error');
     }
+
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = 'Confirm Payment';
 }
 
 async function processPayment(installmentId, paymentNo, regularAmount, penaltyAmount) {
@@ -2375,23 +2538,27 @@ async function viewPaymentReceipt(installmentId, paymentNo, amount) {
     }
 }
 
-function generateAndShowReceipt(installmentId, paymentNo, amount, penaltyAmount, paymentDate, referenceNo) {
-    const now = new Date();
-    const paidDate = paymentDate ? new Date(paymentDate).toLocaleString() : now.toLocaleString();
-    const cashierName = '<?php echo $_SESSION["NAME"] ?? "Admin"; ?>';
-    const paymentMethod = document.getElementById('paymentMethod')?.value.toUpperCase() || 'CASH';
-    const refNo = referenceNo || document.getElementById('paymentReference')?.value || '';
-    
+function generateAndShowReceipt(installmentId, paymentNo, amountGiven, penaltyAmount) {
     apiCall(API_URL, `getInstallmentById&id=${installmentId}`).then(result => {
         if (result.success && result.data) {
             const installment = result.data;
-            const payments = result.payments;
+            const payments = result.payments || [];
             const currentPayment = payments.find(p => p.PaymentNo == paymentNo);
-            const totalPaidSoFar = installment.PaidAmount || 0;
-            const remainingBalance = installment.TotalAmount - totalPaidSoFar;
-            const customerName = installment.CustomerName || document.getElementById('customerName').value || 'Walk-in Customer';
-            const totalPaid = amount + (penaltyAmount || 0);
             
+            const totalPaidSoFar = parseFloat(installment.PaidAmount) || 0;
+            const remainingBalance = parseFloat(installment.RemainingBalance) || 0;
+            const creditBalance = parseFloat(installment.CreditBalance) || 0;
+            
+            const paidAmount = parseFloat(amountGiven) || 0;
+            const penaltyPaid = parseFloat(penaltyAmount) || 0;
+            const creditUsed = currentPayment ? parseFloat(currentPayment.CreditUsed || 0) : 0;
+            const excessToWallet = currentPayment ? parseFloat(currentPayment.ExcessToWallet || 0) : 0;
+
+            const now = new Date();
+            const paidDate = currentPayment?.PaymentDate ? new Date(currentPayment.PaymentDate).toLocaleString() : now.toLocaleString();
+            const cashierName = '<?php echo $_SESSION["NAME"] ?? "Admin"; ?>';
+            const paymentMethod = document.getElementById('paymentMethod')?.value.toUpperCase() || 'CASH';
+
             let html = `
                 <div class="receipt-content">
                     <div class="receipt-header">
@@ -2402,45 +2569,43 @@ function generateAndShowReceipt(installmentId, paymentNo, amount, penaltyAmount,
                     <div class="receipt-line-dashed">- - - - - - - - - - - - - - - -</div>
                     <div class="receipt-row"><span>Receipt No:</span><span><strong>PAY-${now.getTime()}</strong></span></div>
                     <div class="receipt-row"><span>Date:</span><span>${paidDate}</span></div>
-                    <div class="receipt-row"><span>Customer:</span><span>${escapeHtml(customerName)}</span></div>
+                    <div class="receipt-row"><span>Customer:</span><span>${escapeHtml(installment.CustomerName)}</span></div>
                     <div class="receipt-row"><span>Installment No:</span><span>${installment.InstallmentNo || 'N/A'}</span></div>
                     <div class="receipt-row"><span>Payment #:</span><span>${paymentNo}</span></div>
-                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-                    <div class="receipt-row"><span>Regular Amount:</span><span>₱${formatNumber(amount)}</span></div>
-                    ${penaltyAmount > 0 ? `<div class="receipt-row text-danger"><span>Penalty:</span><span>₱${formatNumber(penaltyAmount)}</span></div>` : ''}
-                    <div class="receipt-row receipt-total"><strong>Total Paid:</strong><strong>₱${formatNumber(totalPaid)}</strong></div>
-                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
+                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - -</div>
+                    
+                    <div class="receipt-row"><span>Regular Amount:</span><span>₱${formatNumber(currentPayment?.Amount || 0)}</span></div>
+                    ${penaltyPaid > 0 ? `<div class="receipt-row text-danger"><span>Penalty:</span><span>₱${formatNumber(penaltyPaid)}</span></div>` : ''}
+                    ${creditUsed > 0 ? `<div class="receipt-row text-success"><span>Credit Used:</span><span>-₱${formatNumber(creditUsed)}</span></div>` : ''}
+                    <div class="receipt-row"><span>Amount Given:</span><span>₱${formatNumber(paidAmount)}</span></div>
+                    ${excessToWallet > 0 ? `<div class="receipt-row text-success"><span>Excess → Wallet:</span><span>+₱${formatNumber(excessToWallet)}</span></div>` : ''}
+                    
+                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - -</div>
+                    <div class="receipt-row receipt-total"><strong>Total Applied:</strong><strong>₱${formatNumber(paidAmount + creditUsed)}</strong></div>
+                    
+                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - -</div>
                     <div class="receipt-row"><span>Payment Method:</span><span>${paymentMethod}</span></div>
-                    ${refNo ? `<div class="receipt-row"><span>Reference:</span><span>${escapeHtml(refNo)}</span></div>` : ''}
-                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
-                    <div class="receipt-row"><span>Total Amount:</span><span>₱${formatNumber(installment.TotalAmount)}</span></div>
-                    <div class="receipt-row"><span>Total Paid:</span><span>₱${formatNumber(totalPaidSoFar)}</span></div>
+                    <div class="receipt-row"><span>Current Credit Balance:</span><span class="text-success">₱${formatNumber(creditBalance)}</span></div>
+                    <div class="receipt-row"><span>Total Paid So Far:</span><span>₱${formatNumber(totalPaidSoFar)}</span></div>
                     <div class="receipt-row receipt-total"><strong>Remaining Balance:</strong><strong class="${remainingBalance > 0 ? 'text-danger' : 'text-success'}">₱${formatNumber(remainingBalance)}</strong></div>
-                    <div class="receipt-line-dashed">- - - - - - - - - - - - - - - - - - - -</div>
+                    
                     <div class="receipt-footer text-center mt-2">
                         Cashier: ${cashierName}<br>
                         Thank you for your payment!<br>
-                        ${remainingBalance > 0 ? `<small>Next payment due on your next schedule</small>` : '<strong>🎉 FULLY PAID! 🎉</strong>'}
+                        ${remainingBalance <= 0 ? '<strong>🎉 FULLY PAID! 🎉</strong>' : '<small>Next payment due on schedule</small>'}
                     </div>
                 </div>
             `;
-            
+
             document.getElementById('receiptContent').innerHTML = html;
-            
-            if (currentReceiptModal) { 
-                currentReceiptModal.dispose(); 
-            }
-            currentReceiptModal = new bootstrap.Modal(document.getElementById('receiptModal'), {
-                backdrop: 'static',
-                keyboard: false
-            });
+
+            if (currentReceiptModal) currentReceiptModal.dispose();
+            currentReceiptModal = new bootstrap.Modal(document.getElementById('receiptModal'), { backdrop: 'static' });
             currentReceiptModal.show();
-        } else {
-            showAlertPopup('Error', 'Failed to load receipt data', 'error');
         }
-    }).catch(error => {
-        console.error('Error generating receipt:', error);
-        showAlertPopup('Error', 'Error generating receipt', 'error');
+    }).catch(err => {
+        console.error(err);
+        showAlertPopup('Error', 'Failed to generate receipt', 'error');
     });
 }
 

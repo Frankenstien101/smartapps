@@ -1,0 +1,56 @@
+<header class="topbar command-topbar">
+  <div class="page-header">
+    <h1 id="pageTitle">IT Asset Command Center</h1>
+    <p id="pageSubtitle">Real-time overview of inventory, deployments, maintenance, and asset movement.</p>
+  </div>
+
+  <div class="topbar-actions">
+    <div class="global-search" id="globalSearchShell">
+      <button class="global-search-trigger" type="button" data-action="expand-global-search" aria-label="Open global search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="M16.5 16.5L21 21"></path>
+        </svg>
+      </button>
+      <input id="globalSearch" type="search" placeholder="Search assets, workstations, employees...">
+      <kbd>Ctrl K</kbd>
+    </div>
+
+    <div class="topbar-site-filter" id="globalSiteControl">
+      <label for="globalSiteFilter">Site</label>
+      <select id="globalSiteFilter" class="global-site-native" aria-hidden="true" tabindex="-1">
+        <option value="">All Sites</option>
+      </select>
+      <button class="site-select-button" type="button" data-action="toggle-global-site" aria-haspopup="listbox" aria-expanded="false">
+        <span id="globalSiteLabel">All Sites</span>
+        <img class="point-icon site-select-chevron" src="assets/images/icons/point-icon.svg" alt="" aria-hidden="true">
+      </button>
+      <div class="site-select-menu hidden" id="globalSiteMenu" role="listbox" aria-label="Select site"></div>
+    </div>
+
+    <div class="notification-wrap">
+      <button class="notif-btn minimal" type="button" data-action="toggle-notifications" aria-label="Notifications" aria-expanded="false">
+        <svg class="notif-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"></path>
+          <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
+        </svg>
+        <span class="notif-dot hidden" id="notificationCount">0</span>
+      </button>
+      <div class="notification-panel hidden" id="notificationPanel">
+        <div class="notification-head">
+          <strong>Notifications</strong>
+          <span id="notificationScope">All Sites</span>
+        </div>
+        <div class="notification-list" id="notificationList">
+          <div class="notification-empty">No alerts to review.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-badge minimal">
+      <div class="avatar">AD</div>
+      <div>Admin</div>
+      <img class="point-icon chevron" src="assets/images/icons/point-icon.svg" alt="" aria-hidden="true">
+    </div>
+  </div>
+</header>

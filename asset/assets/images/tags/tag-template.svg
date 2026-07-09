@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160" fill="none">
+  <rect x="2" y="2" width="316" height="156" rx="6" fill="white" stroke="#111111" stroke-width="2"/>
+  <rect x="24" y="25" width="110" height="110" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="79" y="84" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#111">QR</text>
+  <text x="226" y="74" text-anchor="middle" font-family="Arial" font-size="22" font-weight="900" fill="#178F3A">bs</text>
+  <text x="255" y="74" text-anchor="middle" font-family="Arial" font-size="22" font-weight="900" fill="#E3342F">pi</text>
+  <text x="226" y="112" text-anchor="middle" font-family="Arial" font-size="24" font-weight="900" fill="#111">ASSET-0000</text>
+</svg>

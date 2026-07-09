@@ -1,0 +1,147 @@
+<template id="assetDetailsTemplate">
+  <div class="drawer-head asset-drawer-head">
+    <div>
+      <div class="muted" style="font-size:13px;font-weight:700;">Asset Details</div>
+      <h3 class="drawer-title" id="assetDrawerCode">Asset Code</h3>
+    </div>
+    <button class="drawer-close" type="button" data-action="close-drawer">&times;</button>
+  </div>
+
+  <div class="drawer-scroll asset-detail-scroll">
+    <div class="asset-detail-hero">
+      <button class="asset-photo-button" type="button" id="assetPhotoButton">
+        <span id="assetPhotoIcon">▣</span>
+        <img id="assetPhotoPreview" alt="">
+        <small>Upload photo</small>
+      </button>
+      <input id="assetPhotoInput" type="file" accept="image/*" hidden>
+
+      <div class="asset-detail-title">
+        <div class="title-row">
+          <h2 id="assetHeroTitle">Asset Code</h2>
+          <span id="assetHeroStatus"></span>
+        </div>
+        <div id="assetHeroSub" class="asset-hero-sub">Category - Brand / Model</div>
+        <div id="assetHeroMeta" class="asset-meta-line"></div>
+      </div>
+    </div>
+
+    <div class="asset-tag-block">
+      <div class="detail-card-head">Asset Tag</div>
+      <div class="asset-tag-row">
+        <div class="asset-tag-card" id="assetTagCard">
+          <div class="asset-tag-qr" id="assetTagQr"></div>
+          <div class="asset-tag-info">
+            <img class="tag-bspi-logo" src="assets/images/logos/bspi-wordmark.png" alt="BSPI">
+            <strong id="assetTagCode">ASSET-0000</strong>
+          </div>
+        </div>
+        <div class="asset-tag-actions">
+          <button class="light-btn compact-btn" type="button" id="printAssetTagBtn"><span class="btn-symbol">Print</span> Tag</button>
+          <button class="light-btn compact-btn" type="button" id="downloadAssetTagBtn"><span class="btn-symbol">Save</span> Download</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="asset-status-grid">
+      <div class="asset-stat-card">
+        <span>Warranty</span>
+        <strong id="assetWarrantyMetric">Not set</strong>
+        <small id="assetWarrantySub">Add purchase details</small>
+      </div>
+      <div class="asset-stat-card">
+        <span>Depreciation</span>
+        <strong id="assetDepProgressText">0%</strong>
+        <small id="assetDepSub">Current lifecycle</small>
+      </div>
+      <div class="asset-stat-card">
+        <span>Age</span>
+        <strong id="assetAgeMetric">Not set</strong>
+        <small id="assetAgeSub">Since deployment</small>
+      </div>
+      <div class="asset-stat-card">
+        <span>Condition</span>
+        <strong id="assetConditionMetric">Good</strong>
+        <small id="assetConditionSub">Based on status</small>
+      </div>
+    </div>
+
+    <div class="tab-nav" id="assetTabNav">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="specs">Specifications</button>
+      <button class="tab-btn" data-tab="financials">Financials</button>
+      <button class="tab-btn" data-tab="assignment">Assignment</button>
+      <button class="tab-btn" data-tab="maintenance">Maintenance</button>
+      <button class="tab-btn" data-tab="history">History</button>
+    </div>
+
+    <div id="assetTabPanels">
+      <div class="asset-tab-panel" data-tab-panel="overview">
+        <div class="detail-card">
+          <div class="detail-card-body">
+            <div class="kv-list" id="assetOverviewList"></div>
+          </div>
+        </div>
+
+        <div class="detail-card asset-timeline-card">
+          <div class="detail-card-head">Timeline</div>
+          <div class="detail-card-body">
+            <div class="asset-timeline" id="assetTimelineList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-tab-panel hidden" data-tab-panel="specs">
+        <div class="detail-card">
+          <div class="detail-card-head">Technical Specifications</div>
+          <div class="detail-card-body">
+            <div class="kv-list" id="assetSpecsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-tab-panel hidden" data-tab-panel="financials">
+        <div class="detail-card">
+          <div class="detail-card-head">Financial Information</div>
+          <div class="detail-card-body">
+            <div class="kv-list" id="assetFinancialsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-tab-panel hidden" data-tab-panel="assignment">
+        <div class="detail-card">
+          <div class="detail-card-head">Assignment Information</div>
+          <div class="detail-card-body">
+            <div class="kv-list" id="assetAssignmentList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-tab-panel hidden" data-tab-panel="maintenance">
+        <div class="detail-card">
+          <div class="detail-card-head">Repair / Maintenance Log</div>
+          <div class="detail-card-body">
+            <div id="assetRepairList" class="repair-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-tab-panel hidden" data-tab-panel="history">
+        <div class="detail-card">
+          <div class="detail-card-head">Asset History</div>
+          <div class="detail-card-body">
+            <div id="assetHistoryList" class="history-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-foot">
+    <div class="asset-drawer-actions">
+      <button class="light-btn" type="button" id="transferAssetBtn">Transfer Asset</button>
+      <button class="action-btn drawer-primary-action" type="button" id="editAssetBtn">Edit Asset</button>
+    </div>
+  </div>
+</template>

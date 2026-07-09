@@ -1,0 +1,98 @@
+<template id="adminViewTemplate">
+  <section id="view-settings" class="view">
+    <div class="admin-shell">
+      <div class="admin-summary-grid" id="settingsSummaryGrid"></div>
+      <div class="admin-grid" id="settingsLists"></div>
+    </div>
+  </section>
+
+  <section id="view-manage-users" class="view">
+    <div class="admin-shell">
+      <div class="section-card admin-filter-card">
+        <div class="report-filter-grid">
+          <div class="search-box">
+            <span class="search-prefix">Search</span>
+            <input id="adminUserSearch" type="text" placeholder="Search employee ID, name, site, office...">
+          </div>
+          <div class="filter-box">
+            <select id="adminUserStatus">
+              <option value="">All Users</option>
+              <option value="Yes">Active</option>
+              <option value="No">Inactive</option>
+              <option value="Resigned">Resigned</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="card-head">
+          <div class="card-title-group">
+            <h3 class="card-title">Manage Users</h3>
+            <span class="pill" id="adminUserCount">0 Users</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="app-table admin-table">
+            <thead>
+              <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Site</th>
+                <th>Office</th>
+                <th>Status</th>
+                <th>ID Source</th>
+                <th>Updated At</th>
+              </tr>
+            </thead>
+            <tbody id="adminUserBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-audit-log" class="view">
+    <div class="admin-shell">
+      <div class="section-card admin-filter-card">
+        <div class="report-filter-grid">
+          <div class="search-box">
+            <span class="search-prefix">Search</span>
+            <input id="auditSearch" type="text" placeholder="Search action, asset, workstation, user...">
+          </div>
+          <div class="filter-box">
+            <select id="auditActionFilter">
+              <option value="">All Actions</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="card-head">
+          <div class="card-title-group">
+            <h3 class="card-title">Audit Log</h3>
+            <span class="pill" id="auditLogCount">0 Entries</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="app-table admin-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Action</th>
+                <th>Asset Code</th>
+                <th>Main Asset No.</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Status After</th>
+                <th>Encoded By</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

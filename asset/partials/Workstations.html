@@ -1,0 +1,136 @@
+<section id="view-workstations" class="view">
+  <div class="content-grid">
+    <div class="kpi-grid" id="workstationKpis">
+      <div class="kpi-card soft-blue skeleton" style="height:104px;"></div>
+      <div class="kpi-card soft-green skeleton" style="height:104px;"></div>
+      <div class="kpi-card soft-purple skeleton" style="height:104px;"></div>
+      <div class="kpi-card soft-orange skeleton" style="height:104px;"></div>
+      <div class="kpi-card soft-gray skeleton" style="height:104px;"></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-prefix">⌕</span>
+        <input id="workstationSearch" type="text" placeholder="Search workstation ID or user...">
+      </div>
+
+      <div class="filter-box">
+        <select id="branchFilter">
+          <option value="">All Sites</option>
+        </select>
+      </div>
+
+      <div class="filter-box">
+        <select id="officeFilter">
+          <option value="">All Offices</option>
+        </select>
+      </div>
+
+      <div class="filter-box">
+        <select id="statusFilter">
+          <option value="">All Status</option>
+        </select>
+      </div>
+
+      <div class="filter-box">
+        <select id="typeFilter">
+          <option value="">All Types</option>
+          <option value="standard">Standard Package</option>
+        </select>
+      </div>
+
+      <div class="filter-box">
+        <select id="extraFilter">
+          <option value="">Filters</option>
+          <option value="active">Active Only</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="card-head">
+        <div class="card-title-group">
+          <h3 class="card-title" id="workstationTableTitle">Workstations</h3>
+          <span class="pill" id="deployCountPill">0 Deployed</span>
+        </div>
+
+        <div class="card-actions">
+          <button class="action-btn" type="button" data-action="open-add-workstation"><img class="btn-icon" src="assets/images/icons/new-workstation-icon.svg" alt=""> Add Workstation</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="app-table">
+          <thead>
+            <tr>
+              <th><button class="sort-head" type="button" data-ws-sort="rowNumber">No.</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="mainAssetNumber">Workstation ID</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="user">User</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="office">Office</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="systemUnitCode">SU</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="monitorCode">MON</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="mouseCode">MOU</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="keyboardCode">KB</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="upsCode">UPS</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="printerCode">PRT</button></th>
+              <th><button class="sort-head" type="button" data-ws-sort="deploymentStatus">Status</button></th>
+            </tr>
+          </thead>
+          <tbody id="workstationTableBody">
+            <tr>
+              <td colspan="11">
+                <?php include_partial('Loading'); ?>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div id="workstationTableMeta">Loading workstation records...</div>
+        <div class="table-page-controls">
+          <label for="workstationPageSize">Show</label>
+          <select id="workstationPageSize">
+            <option value="10" selected>10</option>
+            <option value="50">50</option>
+            <option value="all">All</option>
+          </select>
+          <button class="light-btn compact" type="button" data-workstation-page="1" id="workstationPrevPage">Prev</button>
+          <button class="light-btn compact" type="button" data-workstation-page="2" id="workstationNextPage">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="split-grid">
+      <div class="section-card">
+        <div class="card-head">
+          <div class="card-title-group">
+            <h3 class="card-title">Recent Activity</h3>
+          </div>
+          <button class="light-btn" type="button" data-view-target="audit-log">View All</button>
+        </div>
+
+        <div class="list-feed" id="recentActivityList"></div>
+      </div>
+
+      <div class="section-card">
+        <div class="card-head">
+          <div class="card-title-group">
+            <h3 class="card-title">Component Summary</h3>
+          </div>
+        </div>
+
+        <div class="summary-chart">
+          <div class="donut">
+            <div class="donut-center">
+              <div class="donut-value" id="componentTotalValue">0</div>
+              <div class="donut-sub">Total Assets</div>
+            </div>
+          </div>
+
+          <div class="legend-list" id="componentLegend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

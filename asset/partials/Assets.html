@@ -1,0 +1,82 @@
+<template id="assetsViewTemplate">
+  <section id="view-assets" class="view">
+    <div class="content-grid">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-prefix">⌕</span>
+          <input id="assetSearch" type="text" placeholder="Search asset code, serial, brand, user...">
+        </div>
+
+        <div class="filter-box asset-category-filter">
+          <select id="assetCategoryFilter">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+
+        <div class="filter-box">
+          <select id="assetOfficeFilter">
+            <option value="">All Offices</option>
+          </select>
+        </div>
+
+        <div class="filter-box">
+          <select id="assetStatusFilter">
+            <option value="">All Status</option>
+          </select>
+        </div>
+
+        <div class="filter-box">
+          <select id="assetBranchFilter">
+            <option value="">All Sites</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="asset-table-tools">
+          <div class="asset-column-toggle" id="assetColumnToggles">
+            <label><input type="checkbox" data-asset-column-toggle="assetCode" checked> Asset Code</label>
+            <label><input type="checkbox" data-asset-column-toggle="category" checked> Category</label>
+            <label><input type="checkbox" data-asset-column-toggle="brand" checked> Brand</label>
+            <label><input type="checkbox" data-asset-column-toggle="model" checked> Model</label>
+            <label><input type="checkbox" data-asset-column-toggle="serial" checked> Serial</label>
+            <label><input type="checkbox" data-asset-column-toggle="mainAsset" checked> Main Asset No.</label>
+            <label><input type="checkbox" data-asset-column-toggle="user" checked> User</label>
+            <label><input type="checkbox" data-asset-column-toggle="branch" checked> Branch</label>
+            <label><input type="checkbox" data-asset-column-toggle="office" checked> Office</label>
+            <label><input type="checkbox" data-asset-column-toggle="status" checked> Status</label>
+          </div>
+          <div class="asset-bulk-actions">
+            <button class="light-btn compact-btn" type="button" data-action="print-selected-tags">Print selected tags</button>
+            <button class="light-btn compact-btn" type="button" data-action="print-visible-tags">Print visible tags</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th class="select-col"><input id="assetSelectAll" type="checkbox" aria-label="Select all visible assets"></th>
+                <th data-col="assetCode">Asset Code</th>
+                <th data-col="category">Category</th>
+                <th data-col="brand">Brand</th>
+                <th data-col="model">Model</th>
+                <th data-col="serial">Serial Number</th>
+                <th data-col="mainAsset">Main Asset No.</th>
+                <th data-col="user">User</th>
+                <th data-col="branch">Branch</th>
+                <th data-col="office">Office</th>
+                <th data-col="status">Status</th>
+              </tr>
+            </thead>
+            <tbody id="assetRegistryBody"></tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div id="assetRegistryMeta">Loading assets...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

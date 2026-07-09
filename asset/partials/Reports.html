@@ -1,0 +1,81 @@
+<template id="reportsViewTemplate">
+  <section id="view-reports" class="view">
+    <div class="reports-shell">
+      <div class="section-card report-filter-card">
+        <div class="report-filter-grid">
+          <div class="filter-box report-type-filter">
+            <select id="reportTypeSelect" aria-label="Report type">
+              <option value="inventory">Inventory</option>
+              <option value="status-summary">Status Summary</option>
+              <option value="assigned">Assigned Assets</option>
+              <option value="available">Available Assets</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="retired">Retired</option>
+              <option value="attention">Needs Attention</option>
+              <option value="investment">Lifecycle Forecast</option>
+              <option value="employees">Employees</option>
+              <option value="workstations">Workstations</option>
+            </select>
+          </div>
+
+          <div class="search-box">
+            <span class="search-prefix">Search</span>
+            <input id="reportSearch" type="text" placeholder="Search report records...">
+          </div>
+
+          <div class="filter-box">
+            <select id="reportSiteFilter">
+              <option value="">All Sites</option>
+            </select>
+          </div>
+
+          <div class="filter-box">
+            <select id="reportOfficeFilter">
+              <option value="">All Offices</option>
+            </select>
+          </div>
+
+          <div class="filter-box">
+            <select id="reportCategoryFilter">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+
+          <div class="filter-box">
+            <select id="reportStatusFilter">
+              <option value="">All Status</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-summary-grid" id="reportSummaryGrid"></div>
+
+      <div class="section-card report-output-card">
+        <div class="card-head">
+          <div class="card-title-group">
+            <h3 class="card-title" id="reportTitle">Inventory Report</h3>
+            <span class="pill" id="reportCountPill">0 Records</span>
+          </div>
+          <div class="card-actions">
+            <button class="light-btn compact-btn" type="button" data-action="print-report">Print</button>
+            <button class="action-btn" type="button" data-action="export-report">Export CSV</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="app-table report-table">
+            <thead id="reportTableHead"></thead>
+            <tbody id="reportTableBody">
+              <tr><td>Choose a report to load records.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div id="reportMeta">Reports use the current global site unless a report site is selected.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

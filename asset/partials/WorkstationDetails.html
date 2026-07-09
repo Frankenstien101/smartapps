@@ -1,0 +1,69 @@
+<template id="workstationDetailsTemplate">
+  <div class="drawer-head">
+    <div>
+      <div class="muted" style="font-size:13px;font-weight:700;">Workstation Details</div>
+      <h3 class="drawer-title" id="wsMainAssetNumber">Main Asset Number</h3>
+    </div>
+    <button class="drawer-close" type="button" data-action="close-drawer">×</button>
+  </div>
+
+  <div class="drawer-scroll">
+    <div class="detail-card">
+      <div class="detail-card-body">
+        <div class="two-col">
+          <div class="kv-list">
+            <div class="kv-row"><div class="kv-label">Assigned User</div><div class="kv-value" id="wsAssignedUser">—</div></div>
+            <div class="kv-row"><div class="kv-label">Reporting Branch</div><div class="kv-value" id="wsBranch">—</div></div>
+            <div class="kv-row"><div class="kv-label">Office</div><div class="kv-value" id="wsOffice">—</div></div>
+            <div class="kv-row"><div class="kv-label">Deployment Status</div><div class="kv-value" id="wsStatus">—</div></div>
+          </div>
+
+          <div class="kv-list">
+            <div class="kv-row"><div class="kv-label">Date Deployed</div><div class="kv-value" id="wsDateDeployed">—</div></div>
+            <div class="kv-row"><div class="kv-label">Date Returned</div><div class="kv-value" id="wsDateReturned">—</div></div>
+            <div class="kv-row"><div class="kv-label">Encoded By</div><div class="kv-value" id="wsEncodedBy">—</div></div>
+            <div class="kv-row"><div class="kv-label">Remarks</div><div class="kv-value" id="wsRemarks">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-head">Assigned Assets</div>
+      <div class="detail-card-body">
+        <div id="wsAssignedAssets" class="assigned-asset-list"></div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-head">Maintenance Summary</div>
+      <div class="detail-card-body">
+        <div class="two-col">
+          <div class="mini-card">
+            <div class="mini-title">Repair Totals</div>
+            <div class="kv-list">
+              <div class="kv-row"><div class="kv-label">Total</div><div class="kv-value" id="wsRepairTotal">0</div></div>
+              <div class="kv-row"><div class="kv-label">Open</div><div class="kv-value" id="wsRepairOpen">0</div></div>
+              <div class="kv-row"><div class="kv-label">Closed</div><div class="kv-value" id="wsRepairClosed">0</div></div>
+            </div>
+          </div>
+
+          <div class="mini-card">
+            <div class="mini-title">Recent Maintenance Items</div>
+            <div id="wsMaintenanceItems" class="history-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-head">History</div>
+      <div class="detail-card-body">
+        <div id="wsHistoryList" class="history-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-foot workstation-actions">
+    <button class="light-btn" type="button" data-action="transfer-workstation">Transfer Workstation</button>
+  </div>
+</template>

@@ -5,174 +5,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartApps — Workspace</title>
+    <title>SmartApps Workspace</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        
+
         body {
             font-family: 'Inter', system-ui, sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(37,99,235,0.12), transparent 35%),
+                #09090b;
         }
-        
+
         .glass {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(24, 24, 27, 0.78);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
         }
 
         .card-hover {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-8px) scale(1.03);
-            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 
-                       0 8px 10px -6px rgb(0 0 0 / 0.1);
+            transition: all 0.35s ease;
         }
 
-        .logo-gradient {
-            background: linear-gradient(90deg, #60a5fa, #a5b4fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .card-hover:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: rgba(255,255,255,0.18);
+            box-shadow:
+                0 20px 25px -5px rgb(0 0 0 / 0.35),
+                0 8px 10px -6px rgb(0 0 0 / 0.35);
+        }
+
+        .logo-glow {
+            box-shadow: 0 0 20px rgba(255,255,255,0.08);
+        }
+
+        .app-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 22px;
+            overflow: hidden;
+            border: 1px solid rgb(63 63 70);
+            background: rgba(255,255,255,0.03);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .launch-btn {
+            transition: all 0.25s ease;
+        }
+
+        .group:hover .launch-btn {
+            transform: translateX(5px);
         }
     </style>
 </head>
-<body class="bg-zinc-950 text-zinc-200 min-h-screen">
 
-    <!-- Top Navigation -->
-    <nav class="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-50">
-        <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">S</div>
-                <div>
-                    <span class="text-2xl font-semibold tracking-tighter logo-gradient">SmartApps</span>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-8 text-sm">
-                <a href="#" class="hover:text-white transition-colors">Apps</a>
-                <a href="/installers.php" class="hover:text-white transition-colors">Downloads</a>
-                <a href="/Services/contact.php" class="hover:text-white transition-colors">Contact</a>
-                <a href="/Services/abouts.php" class="hover:text-white transition-colors">About</a>
+<body class="text-zinc-200 min-h-screen">
+
+<!-- NAVIGATION -->
+<nav class="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
+    <div class="max-w-screen-2xl mx-auto px-8 py-4 flex items-center justify-between">
+
+        <!-- LOGO -->
+        <div class="flex items-center gap-4">
+
+            <div class="w-12 h-12 rounded-2xl overflow-hidden border border-zinc-700 logo-glow">
+                <img
+                    src="/img/smartapps.png"
+                    alt="SmartApps Logo"
+                    class="w-full h-full object-cover"
+                >
             </div>
 
-            <div class="flex items-center gap-3">
-                <div class="bg-zinc-900 text-xs px-3 py-1.5 rounded-2xl border border-zinc-700 flex items-center gap-2">
-                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    Online
-                </div>
+            <div>
+                <h1 class="text-xl font-semibold tracking-tight text-white">
+                    SmartApps Workspace
+                </h1>
+
+                <p class="text-xs text-zinc-500">
+                    Unified Business Platform
+                </p>
             </div>
         </div>
-    </nav>
 
-    <div class="max-w-screen-2xl mx-auto px-8 py-12">
-        <!-- Header -->
-        <div class="mb-12">
-            <h1 class="text-5xl font-semibold tracking-tighter mb-3">
-                Welcome back
-            </h1>
-            <p class="text-zinc-400 text-lg">
-                Select an application to continue
-            </p>
+        <!-- MENU -->
+        <div class="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+            <a href="#" class="hover:text-white transition">Apps</a>
+            <a href="/installers.php" class="hover:text-white transition">Downloads</a>
+            <a href="/Services/contact.php" class="hover:text-white transition">Contact</a>
+            <a href="/Services/abouts.php" class="hover:text-white transition">About</a>
         </div>
 
-        <!-- Apps Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            
-            <!-- POS -->
-            <a href="/SIDJAN/login.php" class="group">
-                <div class="glass border border-zinc-700 rounded-3xl p-8 card-hover h-full flex flex-col">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-8 text-4xl shadow-lg">
-                        💰
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-2">POS System</h3>
-                    <p class="text-zinc-400 flex-1">Point of Sale • Sales • Receipts</p>
-                    <div class="mt-6 flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                        Launch Application 
-                        <span class="text-lg transition-transform group-hover:translate-x-1">→</span>
-                    </div>
-                </div>
-            </a>
-
-            <!-- Stock Inventory -->
-            <a href="/it_equipment_inventory/index.php" class="group">
-                <div class="glass border border-zinc-700 rounded-3xl p-8 card-hover h-full flex flex-col">
-                    <div class="w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-2xl flex items-center justify-center mb-8 text-4xl shadow-lg">
-                        📦
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-2">Stock Inventory</h3>
-                    <p class="text-zinc-400 flex-1">Inventory Management • Stock Tracking • Reports</p>
-                    <div class="mt-6 flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                        Launch Application 
-                        <span class="text-lg transition-transform group-hover:translate-x-1">→</span>
-                    </div>
-                </div>
-            </a>
-
-            <!-- TBC / Goods Credit -->
-            <a href="/GoodsCredit/login.php" class="group">
-                <div class="glass border border-zinc-700 rounded-3xl p-8 card-hover h-full flex flex-col">
-                    <div class="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mb-8 text-4xl shadow-lg">
-                        📋
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-2">Goods Credit</h3>
-                    <p class="text-zinc-400 flex-1">Credit Management • Goods Tracking</p>
-                    <div class="mt-6 flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                        Launch Application 
-                        <span class="text-lg transition-transform group-hover:translate-x-1">→</span>
-                    </div>
-                </div>
-            </a>
-
-
-             <!-- Ploutus -->
-            <a href="/ploutus/login.php" class="group">
-                <div class="glass border border-zinc-700 rounded-3xl p-8 card-hover h-full flex flex-col">
-                    <div class="w-16 h-16 bg-gradient-to-br from-white  to-warm-gray-500 to-warm-gray-600 rounded-2xl flex items-center justify-center mb-8 text-4xl shadow-lg">
-                        🏦
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-2">Ploutus</h3>
-                    <p class="text-zinc-400 flex-1">Accounting Management • Business Accounting Tracking</p>
-                    <div class="mt-6 flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                        Launch Application 
-                        <span class="text-lg transition-transform group-hover:translate-x-1">→</span>
-                    </div>
-                </div>
-            </a>
-
-
-              <!-- My Files -->
-            <a href="/myfiles/bspifiles.php" class="group">
-                <div class="glass border border-zinc-700 rounded-3xl p-8 card-hover h-full flex flex-col">
-                    <div class="w-16 h-16 bg-gradient-to-br from-white  to-warm-gray-500 to-warm-gray-600 rounded-2xl flex items-center justify-center mb-8 text-4xl shadow-lg">
-                        📁
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-2">My Files</h3>
-                    <p class="text-zinc-400 flex-1">File Management</p>
-                    <div class="mt-6 flex items-center text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
-                        Launch Application 
-                        <span class="text-lg transition-transform group-hover:translate-x-1">→</span>
-                    </div>
-                </div>
-            </a>
-
+        <!-- STATUS -->
+        <div class="bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-xs flex items-center gap-2">
+            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            All Systems Online
         </div>
 
-        <!-- Footer -->
-        <footer class="mt-20 text-center text-zinc-500 text-sm">
-            © <?php echo date("Y"); ?> SmartApps • Streamlined Efficiency
-        </footer>
+    </div>
+</nav>
+
+<!-- MAIN -->
+<div class="max-w-screen-2xl mx-auto px-8 py-12">
+
+    <!-- HEADER -->
+    <div class="mb-12">
+        <h1 class="text-5xl font-semibold tracking-tighter mb-3 text-white">
+            Welcome Back
+        </h1>
+
+        <p class="text-zinc-400 text-lg">
+            Select an application to continue
+        </p>
     </div>
 
-    <script>
-        // Optional: Keyboard shortcut hint (like Cloudflare)
-        document.addEventListener('keydown', (e) => {
-            if (e.key === '/' && document.activeElement.tagName !== "INPUT") {
-                e.preventDefault();
-                alert("🔍 Quick search coming soon...");
-            }
-        });
-    </script>
+    <!-- APPLICATION GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+        <!-- INVENTORY -->
+        <a href="/it_equipment_inventory/index.php" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/img/bsms.png" alt="Inventory">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    Stock Inventory
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    Inventory Management • Stock Tracking • Reports
+                </p>
+
+            </div>
+        </a>
+
+        <!-- GOODS CREDIT -->
+        <a href="/TBC/login.php" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/img/tbc.png" alt="Tele Caller App">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    Tele Caller App
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    Tele Calling Application • Customer Engagement
+                </p>
+            </p>
+
+            </div>
+        </a>
+
+        <!-- PLOUTUS -->
+        <a href="/ploutus/login.php" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/ploutus/mainimg/pl.png" alt="Ploutus">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    Ploutus
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    Accounting Management • Financial System
+                </p>
+
+            </div>
+        </a>
+
+        <!-- MY FILES -->
+        <a href="/myfiles/bspifiles.php" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/img/files.png" alt="Files">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    My Files
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    File Storage • Document Management
+                </p>
+
+            </div>
+        </a>
+
+        <!-- ANUBIS -->
+        <a href="/anubis/login.php" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/anubis/mainimg/pl.png" alt="ANUBIS">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    Anubis
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    Tracking Management • Real-Time Updates
+                </p>
+            </div>
+        </a>
+
+
+         <!-- ANUBIS -->
+        <a href="/asset" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/img/asst.png" alt="asset">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    Asset Management
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    Asset Tracking • IT Inventory Management
+                </p>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="mt-20 text-center text-zinc-500 text-sm">
+        © <?php echo date("Y"); ?> SmartApps Workspace • Unified Business Ecosystem
+    </footer>
+
+</div>
+
 </body>
 </html>

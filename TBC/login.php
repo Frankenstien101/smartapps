@@ -1,45 +1,42 @@
 <?php
 session_start();
 
- require_once __DIR__ . '/DB/dbcon.php';
+require_once __DIR__ . '/DB/dbcon.php';
 
 $error = '';
 $success = '';
+$activeForm = 'login'; // 'login' or 'signup'
 
 // Handle login form submission
 if (isset($_POST['login'])) {
-    $username = trim($_POST['username'] ?? ''); // Trim whitespace
+    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
     try {
-        // Prepare and execute query
         $stmt = $conn->prepare("
-            SELECT 
-                USERNAME,PASSWORDHASH,ROLE,FULLNAME,BranchName
+            SELECT USERNAME, PASSWORD, ROLE, FULLNAME, BRANCH, STATUS
             FROM users
-                
             WHERE USERNAME = :username
         ");
-        $stmt->bindParam(':username', $username, PDO::PARAM_STR); // Bind username as a string
+        $stmt->bindParam(':username', $username, PDO::PARAM_STR);
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
-            // Compare passwords (case-sensitive)
-            if ($user['PASSWORDHASH'] === $password) {
-                // Password matches
+            // Check if account is approved
+            if ($user['STATUS'] === 'PENDING') {
+                $error = "Your account is pending approval. Please wait for admin approval.";
+            } elseif ($user['STATUS'] === 'REJECTED') {
+                $error = "Your account has been rejected. Please contact support.";
+        
+            } elseif ($user['PASSWORD'] === $password) {
                 $_SESSION['username'] = $user['USERNAME'];
                 $_SESSION['NAME'] = $user['FULLNAME'];
-                $_SESSION['Role'] = $user['ROLE']; 
-                $_SESSION['branch_name'] = $user['BranchName'];
-
-                if ($user['ROLE'] === 'admin') {
-                      header("Location: /SIDJAN/home.php");
-                } else {
-                       header("Location: /SIDJAN/user.php");
-                }
-                // Redirect to homepage
-             
+                $_SESSION['role'] = $user['ROLE'];
+                $_SESSION['SITE'] = $user['BRANCH'];
+                $_SESSION['user_logged_in'] = true;
+                
+                header("Location: /TBC/home.php");
                 exit();
             } else {
                 $error = "Invalid password.";
@@ -52,11 +49,55 @@ if (isset($_POST['login'])) {
     }
 }
 
-// If already logged in, redirect to dashboard
-if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) {
-    header('Location: dashboard.php');
-    exit;
+// Handle signup form submission
+if (isset($_POST['signup'])) {
+    $username = trim($_POST['signup_username'] ?? '');
+    $password = $_POST['signup_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+    $fullname = trim($_POST['fullname'] ?? '');
+    $branch = $_POST['branch'] ?? '';
+    
+    // Validation
+    if (empty($username) || empty($password) || empty($fullname) || empty($branch)) {
+        $error = "All fields are required.";
+    } elseif (strlen($password) < 6) {
+        $error = "Password must be at least 6 characters.";
+    } elseif ($password !== $confirmPassword) {
+        $error = "Passwords do not match.";
+    } else {
+        try {
+            // Check if username already exists
+            $checkStmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE USERNAME = :username");
+            $checkStmt->bindParam(':username', $username, PDO::PARAM_STR);
+            $checkStmt->execute();
+            $exists = $checkStmt->fetchColumn();
+            
+            if ($exists > 0) {
+                $error = "Username already exists. Please choose another.";
+            } else {
+                // Insert new user (status = PENDING, role = USER by default)
+                $insertStmt = $conn->prepare("
+                    INSERT INTO users (USERNAME, PASSWORD, FULLNAME, ROLE, STATUS, BRANCH)
+                    VALUES (:username, :password, :fullname, 'TELE-CALLER', 'PENDING', :branch)
+                ");
+                $insertStmt->bindParam(':username', $username, PDO::PARAM_STR);
+                $insertStmt->bindParam(':password', $password, PDO::PARAM_STR);
+                $insertStmt->bindParam(':fullname', $fullname, PDO::PARAM_STR);
+                $insertStmt->bindParam(':branch', $branch, PDO::PARAM_STR);
+                
+                if ($insertStmt->execute()) {
+                    $success = "Account created successfully! Please wait for admin approval.";
+                    $activeForm = 'login';
+                } else {
+                    $error = "Failed to create account. Please try again.";
+                }
+            }
+        } catch (PDOException $e) {
+            $error = "Database error: " . htmlspecialchars($e->getMessage());
+        }
+    }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -255,7 +296,6 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
 
         .brand i {
             font-size: 56px;
-            color: #00d2ff;
             background: linear-gradient(135deg, #00d2ff, #3a7bd5);
             -webkit-background-clip: text;
             background-clip: text;
@@ -278,15 +318,74 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             margin-top: 6px;
         }
 
+        /* Tab Styles */
+        .form-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(0, 210, 255, 0.2);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #8e9aaf;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: #00d2ff;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #00d2ff;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: #5ce0ff;
+        }
+
         /* Form styles */
+        .form-panel {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .form-panel.active-panel {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
         .input-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .input-group label {
             display: block;
             color: #e0e7ff;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             margin-bottom: 8px;
         }
@@ -301,23 +400,33 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             position: absolute;
             left: 16px;
             color: #5f7f9e;
-            font-size: 18px;
+            font-size: 16px;
         }
 
-        .input-wrapper input {
+        .input-wrapper input, .input-wrapper select {
             width: 100%;
-            padding: 14px 16px 14px 48px;
+            padding: 12px 16px 12px 44px;
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(0, 210, 255, 0.2);
             border-radius: 24px;
-            font-size: 15px;
+            font-size: 14px;
             color: #ffffff;
             font-family: 'Inter', sans-serif;
             transition: all 0.2s ease;
             outline: none;
         }
 
-        .input-wrapper input:focus {
+        .input-wrapper select {
+            cursor: pointer;
+            appearance: none;
+        }
+
+        .input-wrapper select option {
+            background: #1a2a3e;
+            color: white;
+        }
+
+        .input-wrapper input:focus, .input-wrapper select:focus {
             border-color: #00d2ff;
             background: rgba(0, 210, 255, 0.08);
             box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.2);
@@ -327,61 +436,27 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             color: #5f7f9e;
         }
 
-        /* Options row */
-        .options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 20px 0 28px;
-            font-size: 13px;
-        }
-
-        .checkbox-label {
-            color: #a0b3d9;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-label input {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-            accent-color: #00d2ff;
-        }
-
-        .forgot-link {
-            color: #00d2ff;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .forgot-link:hover {
-            color: #5ce0ff;
-            text-decoration: underline;
-        }
-
-        /* Login button */
-        .login-btn {
+        /* Submit button */
+        .submit-btn {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             background: linear-gradient(90deg, #00d2ff, #3a7bd5);
             border: none;
             border-radius: 40px;
             color: white;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             font-family: 'Inter', sans-serif;
+            margin-top: 10px;
         }
 
-        .login-btn:hover {
+        .submit-btn:hover {
             transform: scale(1.02);
             box-shadow: 0 10px 25px -5px rgba(0, 210, 255, 0.4);
         }
@@ -391,7 +466,7 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             padding: 12px 16px;
             border-radius: 16px;
             margin-bottom: 24px;
-            font-size: 14px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -407,21 +482,6 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             background: rgba(85, 255, 170, 0.15);
             border-left: 3px solid #55ffaa;
             color: #b3ffd9;
-        }
-
-        /* Demo credentials hint */
-        .demo-hint {
-            margin-top: 28px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-            font-size: 12px;
-            color: #7b8cae;
-        }
-
-        .demo-hint strong {
-            color: #00d2ff;
-            font-weight: 500;
         }
 
         /* Responsive */
@@ -459,53 +519,123 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
 
     <div class="login-container">
         <div class="login-card">
-    <div class="brand">
-        <i class="fas fa-phone-volume"></i>
-        <h2>TBC</h2>
-        <p>Tele-calling application</p>
-    </div>
+            <div class="brand">
+                <i class="fas fa-phone-volume"></i>
+                <h2>TBC</h2>
+                <p>Tele-calling application</p>
+            </div>
 
-    <?php if ($error): ?>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-circle"></i>
-            <?php echo htmlspecialchars($error); ?>
-        </div>
-    <?php endif; ?>
+            <?php if ($error): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+            <?php endif; ?>
 
-    <form method="POST" action="">
-        <div class="input-group">
-            <label for="username">Username</label>
-            <div class="input-wrapper">
-                <i class="fas fa-user"></i>
-                <input type="text" id="username" name="username" placeholder="Enter your username" value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>" required>
+            <?php if ($success): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo htmlspecialchars($success); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Tabs -->
+            <div class="form-tabs">
+                <button type="button" class="tab-btn <?php echo $activeForm === 'login' ? 'active' : ''; ?>" data-form="login">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button type="button" class="tab-btn <?php echo $activeForm === 'signup' ? 'active' : ''; ?>" data-form="signup">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <div class="form-panel <?php echo $activeForm === 'login' ? 'active-panel' : ''; ?>" id="loginPanel">
+                <form method="POST" action="">
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="username" name="username" placeholder="Enter your username" value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="password" name="password" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" name="login" class="submit-btn">
+                        <i class="fas fa-arrow-right-to-bracket"></i> Sign In
+                    </button>
+                </form>
+            </div>
+
+            <!-- Signup Form -->
+            <div class="form-panel <?php echo $activeForm === 'signup' ? 'active-panel' : ''; ?>" id="signupPanel">
+                <form method="POST" action="">
+                    <div class="input-group">
+                        <label for="fullname">Full Name</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user-circle"></i>
+                            <input type="text" id="fullname" name="fullname" placeholder="Enter your full name" value="<?php echo isset($_POST['fullname']) ? htmlspecialchars($_POST['fullname']) : ''; ?>" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="signup_username">Username</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="signup_username" name="signup_username" placeholder="Choose a username" value="<?php echo isset($_POST['signup_username']) ? htmlspecialchars($_POST['signup_username']) : ''; ?>" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="branch">Branch</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-building"></i>
+                            <select id="branch" name="branch" required>
+                                <option value="">Select Branch</option>
+                                <option value="KOR" <?php echo (isset($_POST['branch']) && $_POST['branch'] === 'KOR') ? 'selected' : ''; ?>>KOR</option>
+                                <option value="DVO" <?php echo (isset($_POST['branch']) && $_POST['branch'] === 'DVO') ? 'selected' : ''; ?>>DVO</option>
+                                <option value="BXU" <?php echo (isset($_POST['branch']) && $_POST['branch'] === 'BXU') ? 'selected' : ''; ?>>BXU</option>
+                                <option value="CDO" <?php echo (isset($_POST['branch']) && $_POST['branch'] === 'CDO') ? 'selected' : ''; ?>>CDO</option>
+                                <option value="OZA" <?php echo (isset($_POST['branch']) && $_POST['branch'] === 'OZA') ? 'selected' : ''; ?>>OZA</option>
+                                <option value="ZAM" <?php echo (isset($_POST['branch']) && $_POST['branch'] === 'ZAM') ? 'selected' : ''; ?>>ZAM</option>
+                             </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="signup_password">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="signup_password" name="signup_password" placeholder="Minimum 6 characters" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-check-circle"></i>
+                            <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" name="signup" class="submit-btn">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+                </form>
+                <div class="demo-hint" style="margin-top: 20px; text-align: center; font-size: 11px;">
+                    <i class="fas fa-info-circle"></i> Account will be pending admin approval
+                </div>
             </div>
         </div>
-
-        <div class="input-group">
-            <label for="password">Password</label>
-            <div class="input-wrapper">
-                <i class="fas fa-lock"></i>
-                <input type="password" id="password" name="password" placeholder="••••••••" required>
-            </div>
-        </div>
-
-        <div class="options">
-            <label class="checkbox-label">
-                <input type="checkbox" name="remember"> Remember me
-            </label>
-            <a href="#" class="forgot-link">Forgot password?</a>
-        </div>
-
-        <button type="submit" name="login" class="login-btn">
-            <i class="fas fa-arrow-right-to-bracket"></i> Sign In
-        </button>
-    </form>
-
-   
-</div>
     </div>
 
-    <!-- JavaScript to generate dynamic sound wave bars -->
     <script>
         // Generate animated wave bars dynamically
         const waveContainer = document.getElementById('waveContainer');
@@ -513,7 +643,6 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
         for (let i = 0; i < barCount; i++) {
             const bar = document.createElement('div');
             bar.classList.add('wave-bar');
-            // Randomize height range and animation delay for organic feel
             const randomDelay = (Math.random() * 1).toFixed(2);
             const randomDuration = (0.8 + Math.random() * 0.8).toFixed(2);
             bar.style.animationDelay = `${randomDelay}s`;
@@ -522,7 +651,31 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             waveContainer.appendChild(bar);
         }
 
-        // Add floating particles effect on mouse move (subtle)
+        // Tab switching functionality
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const loginPanel = document.getElementById('loginPanel');
+        const signupPanel = document.getElementById('signupPanel');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const formType = btn.getAttribute('data-form');
+                
+                // Update active tab
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Show corresponding panel
+                if (formType === 'login') {
+                    loginPanel.classList.add('active-panel');
+                    signupPanel.classList.remove('active-panel');
+                } else {
+                    signupPanel.classList.add('active-panel');
+                    loginPanel.classList.remove('active-panel');
+                }
+            });
+        });
+
+        // Floating particles effect on mouse move
         document.body.addEventListener('mousemove', (e) => {
             const orb = document.querySelector('.glow-orb');
             if (orb) {

@@ -22,7 +22,7 @@ $site_name = "Kayatay";
         }
         .container { 
             max-width: 1400px; 
-            margin: 30px auto; 
+            margin-top: -300px; 
             padding: 0 15px; 
         }
         .video-grid {

@@ -1,0 +1,197 @@
+<div id="addAssetModal" class="modal-shell">
+  <div class="modal-backdrop" data-action="close-add-asset"></div>
+
+  <div class="modal-panel modal-panel-lg">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-eyebrow" id="addAssetModalEyebrow">Asset Creation</div>
+          <h3 class="modal-title" id="addAssetModalTitle">Add New Asset</h3>
+          <div class="modal-subtitle" id="addAssetModalSubtitle">Expected life and depreciation fields are auto-calculated from category, purchase date, and purchase price.</div>
+        </div>
+        <button class="modal-close" type="button" data-action="close-add-asset">×</button>
+      </div>
+
+      <form id="addAssetForm" class="modal-body">
+        <input id="addAssetAssetCode" type="hidden">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Asset Category *</label>
+            <select id="addAssetCategory" required></select>
+          </div>
+
+          <div class="form-field">
+            <label>Reporting Branch *</label>
+            <select id="addAssetBranch" required></select>
+          </div>
+
+          <div class="form-field">
+            <label>Office *</label>
+            <select id="addAssetOffice" required></select>
+          </div>
+
+          <div class="form-field">
+            <label>Asset Status *</label>
+            <select id="addAssetStatus" required></select>
+          </div>
+
+          <div class="form-field">
+            <label>Brand *</label>
+            <input id="addAssetBrand" type="text" required>
+          </div>
+
+          <div class="form-field">
+            <label>Model *</label>
+            <input id="addAssetModel" type="text" required>
+          </div>
+
+          <div class="form-field">
+            <label>Serial Number *</label>
+            <input id="addAssetSerial" type="text" required>
+          </div>
+
+          <div class="form-field">
+            <label>Current User</label>
+            <input id="addAssetCurrentUser" type="text">
+            <div class="field-actions">
+              <button class="light-btn compact-btn" type="button" id="lookupAssetUserBtn">Lookup User Assets</button>
+              <button class="light-btn compact-btn" type="button" id="clearAssetLookupBtn">Clear</button>
+            </div>
+          </div>
+
+          <div class="form-field" id="addAssetMainAssetField">
+            <label>Assigned Main Asset No.</label>
+            <input id="addAssetMainAssetNo" type="text" placeholder="Leave blank if not yet deployed">
+          </div>
+
+          <div class="form-field">
+            <label>Date Deployment</label>
+            <input id="addAssetDateDeployment" type="date">
+          </div>
+
+          <div class="form-field">
+            <label>Purchase Date *</label>
+            <input id="addAssetPurchaseDate" type="date" required>
+          </div>
+
+          <div class="form-field">
+            <label>Purchase Price *</label>
+            <input id="addAssetPurchasePrice" type="number" step="0.01" min="0" required>
+          </div>
+
+          <div class="form-field">
+            <label>Expected Life (Years)</label>
+            <input id="addAssetExpectedLife" type="number" step="1" min="0" readonly>
+          </div>
+
+          <div class="form-field">
+            <label>Residual Value (10%)</label>
+            <input id="addAssetResidualValue" type="number" step="0.01" min="0" readonly>
+          </div>
+
+          <div class="form-field">
+            <label>Current Value</label>
+            <input id="addAssetCurrentValue" type="number" step="0.01" min="0" readonly>
+          </div>
+
+          <div class="form-field">
+            <label>Device EOL</label>
+            <input id="addAssetDeviceEol" type="date" readonly>
+          </div>
+
+          <div class="form-field">
+            <label>Fully Depreciated Date</label>
+            <input id="addAssetFullyDepDate" type="date" readonly>
+          </div>
+
+          <div class="form-field">
+            <label>Encoded By *</label>
+            <input id="addAssetEncodedBy" type="text" value="Admin" required>
+          </div>
+        </div>
+
+        <div class="form-section-title">Category-Specific Details</div>
+
+        <div class="form-grid">
+          <div class="form-field spec-field spec-computer" data-spec-group="computer">
+            <label>Processor</label>
+            <input id="addAssetProcessor" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-computer" data-spec-group="computer">
+            <label>RAM</label>
+            <input id="addAssetRam" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-computer" data-spec-group="computer">
+            <label>Storage</label>
+            <input id="addAssetStorage" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-computer" data-spec-group="computer">
+            <label>Operating System</label>
+            <input id="addAssetOS" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-system-unit" data-spec-group="system_unit">
+            <label>PC Name</label>
+            <input id="addAssetPcName" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-system-unit spec-laptop" data-spec-group="computer_network">
+            <label>MAC Address</label>
+            <input id="addAssetMac" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-system-unit" data-spec-group="system_unit">
+            <label>IP Address</label>
+            <input id="addAssetIp" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-laptop" data-spec-group="laptop_name">
+            <label>Laptop Name</label>
+            <input id="addAssetLaptopName" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-ups" data-spec-group="ups">
+            <label>Capacity (VA)</label>
+            <input id="addAssetCapacityVa" type="text">
+          </div>
+
+          <div class="form-field spec-field spec-printer" data-spec-group="printer">
+            <label>Printer Type</label>
+            <input id="addAssetPrinterType" type="text">
+          </div>
+        </div>
+
+        <div class="form-field form-field-full">
+          <label>Remarks</label>
+          <textarea id="addAssetRemarks" rows="4"></textarea>
+        </div>
+
+        <div class="form-section-title" id="assetBulkImportTitle">Bulk Import</div>
+        <div class="form-field form-field-full" id="assetBulkImportSection">
+          <label>Import from Excel or CSV</label>
+          <div class="field-actions">
+            <input id="addAssetImportFile" type="file" accept=".xlsx,.xls,.csv">
+            <a class="light-btn compact-btn" href="download_asset_template.php">Download Template</a>
+            <button class="action-btn" type="button" id="addAssetImportBtn">Import File</button>
+          </div>
+          <div id="addAssetImportStatus" class="field-hint">No file selected.</div>
+        </div>
+
+        <div id="addAssetPreview" class="preview-box">
+          <div class="preview-title">Code Preview</div>
+          <div class="preview-value" id="addAssetCodePreview">Select a category to preview next asset code.</div>
+        </div>
+
+        <div id="addAssetLookupResult" class="lookup-result hidden"></div>
+
+        <div class="modal-foot">
+          <button class="light-btn" type="button" data-action="close-add-asset">Cancel</button>
+          <button class="action-btn" type="submit" id="addAssetSubmitBtn">Save Asset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

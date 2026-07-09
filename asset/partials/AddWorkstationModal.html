@@ -1,0 +1,282 @@
+<div id="addWorkstationModal" class="modal-shell">
+  <div class="modal-backdrop" data-action="close-add-workstation"></div>
+
+  <div class="modal-panel modal-panel-lg">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-eyebrow">Smart Workstation Creation</div>
+          <h3 class="modal-title">Add New Workstation</h3>
+          <div class="modal-subtitle">Create the workstation and either assign existing assets or create new assets inline.</div>
+        </div>
+        <button class="modal-close" type="button" data-action="close-add-workstation">×</button>
+      </div>
+
+      <form id="addWorkstationForm" class="modal-body">
+        <div class="preview-box" style="margin-top:0;margin-bottom:18px;">
+          <div class="preview-title">Main Asset Number Preview</div>
+          <div class="preview-value" id="addWorkstationCodePreview">Select a site to preview next workstation ID.</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Workstation ID / Main Asset No.</label>
+            <input id="addWsMainAssetNumber" type="text" placeholder="Auto-generated if blank">
+          </div>
+
+          <div class="form-field">
+            <label>Reporting Branch / Site *</label>
+            <select id="addWsBranch" required></select>
+          </div>
+
+          <div class="form-field employee-picker-field">
+            <label>User *</label>
+            <input id="addWsEmployeeId" type="hidden">
+            <div class="employee-picker-control">
+              <input id="addWsUser" type="text" placeholder="Employee ID or full name" required>
+              <button class="light-btn compact-btn" type="button" id="lookupWsEmployeeBtn">Lookup</button>
+            </div>
+            <div id="addWsEmployeeStatus" class="field-hint">Use Employee ID or exact name.</div>
+          </div>
+
+          <div class="form-field">
+            <label>Office *</label>
+            <select id="addWsOffice" required></select>
+          </div>
+
+          <div class="form-field">
+            <label>Date Deployed</label>
+            <input id="addWsDateDeployed" type="date">
+          </div>
+
+          <div class="form-field">
+            <label>Date Returned</label>
+            <input id="addWsDateReturned" type="date">
+          </div>
+
+          <div class="form-field">
+            <label>Deployment Status *</label>
+            <select id="addWsDeploymentStatus" required></select>
+          </div>
+
+          <div class="form-field">
+            <label>Active *</label>
+            <select id="addWsActive" required>
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Encoded By *</label>
+            <input id="addWsEncodedBy" type="text" value="Admin" required>
+          </div>
+        </div>
+
+        <div class="form-field form-field-full">
+          <label>Remarks</label>
+          <textarea id="addWsRemarks" rows="3"></textarea>
+        </div>
+
+        <div class="form-section-title">Components</div>
+
+        <!-- System Unit -->
+        <div class="detail-card">
+          <div class="detail-card-head">System Unit</div>
+          <div class="detail-card-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Mode</label>
+                <select id="addWsSystemUnitMode" data-ws-mode="systemUnit">
+                  <option value="">Skip</option>
+                  <option value="existing">Use Existing</option>
+                  <option value="new">Create New</option>
+                </select>
+              </div>
+
+              <div class="form-field ws-existing-block hidden" data-ws-existing="systemUnit">
+                <label>Existing Asset Code</label>
+                <input id="addWsSystemUnitCode" type="text" placeholder="SU-0001">
+              </div>
+            </div>
+
+            <div class="ws-new-block hidden" data-ws-new="systemUnit">
+              <div class="form-grid">
+                <div class="form-field"><label>Brand</label><input id="addWsSystemUnitBrand" type="text"></div>
+                <div class="form-field"><label>Model</label><input id="addWsSystemUnitModel" type="text"></div>
+                <div class="form-field"><label>Serial Number</label><input id="addWsSystemUnitSerialNumber" type="text"></div>
+                <div class="form-field"><label>Processor</label><input id="addWsSystemUnitProcessor" type="text"></div>
+                <div class="form-field"><label>RAM</label><input id="addWsSystemUnitRam" type="text"></div>
+                <div class="form-field"><label>Storage</label><input id="addWsSystemUnitStorage" type="text"></div>
+                <div class="form-field"><label>Operating System</label><input id="addWsSystemUnitOperatingSystem" type="text"></div>
+                <div class="form-field"><label>PC Name</label><input id="addWsSystemUnitPcName" type="text"></div>
+                <div class="form-field"><label>MAC Address</label><input id="addWsSystemUnitMacAddress" type="text"></div>
+                <div class="form-field"><label>IP Address</label><input id="addWsSystemUnitIpAddress" type="text"></div>
+                <div class="form-field"><label>Purchase Date</label><input id="addWsSystemUnitPurchaseDate" type="date"></div>
+                <div class="form-field"><label>Purchase Price</label><input id="addWsSystemUnitPurchasePrice" type="number" step="0.01" min="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monitor -->
+        <div class="detail-card">
+          <div class="detail-card-head">Monitor</div>
+          <div class="detail-card-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Mode</label>
+                <select id="addWsMonitorMode" data-ws-mode="monitor">
+                  <option value="">Skip</option>
+                  <option value="existing">Use Existing</option>
+                  <option value="new">Create New</option>
+                </select>
+              </div>
+              <div class="form-field ws-existing-block hidden" data-ws-existing="monitor">
+                <label>Existing Asset Code</label>
+                <input id="addWsMonitorCode" type="text" placeholder="MON-0001">
+              </div>
+            </div>
+            <div class="ws-new-block hidden" data-ws-new="monitor">
+              <div class="form-grid">
+                <div class="form-field"><label>Brand</label><input id="addWsMonitorBrand" type="text"></div>
+                <div class="form-field"><label>Model</label><input id="addWsMonitorModel" type="text"></div>
+                <div class="form-field"><label>Serial Number</label><input id="addWsMonitorSerialNumber" type="text"></div>
+                <div class="form-field"><label>Purchase Date</label><input id="addWsMonitorPurchaseDate" type="date"></div>
+                <div class="form-field"><label>Purchase Price</label><input id="addWsMonitorPurchasePrice" type="number" step="0.01" min="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mouse -->
+        <div class="detail-card">
+          <div class="detail-card-head">Mouse</div>
+          <div class="detail-card-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Mode</label>
+                <select id="addWsMouseMode" data-ws-mode="mouse">
+                  <option value="">Skip</option>
+                  <option value="existing">Use Existing</option>
+                  <option value="new">Create New</option>
+                </select>
+              </div>
+              <div class="form-field ws-existing-block hidden" data-ws-existing="mouse">
+                <label>Existing Asset Code</label>
+                <input id="addWsMouseCode" type="text" placeholder="MOU-0001">
+              </div>
+            </div>
+            <div class="ws-new-block hidden" data-ws-new="mouse">
+              <div class="form-grid">
+                <div class="form-field"><label>Brand</label><input id="addWsMouseBrand" type="text"></div>
+                <div class="form-field"><label>Model</label><input id="addWsMouseModel" type="text"></div>
+                <div class="form-field"><label>Serial Number</label><input id="addWsMouseSerialNumber" type="text"></div>
+                <div class="form-field"><label>Purchase Date</label><input id="addWsMousePurchaseDate" type="date"></div>
+                <div class="form-field"><label>Purchase Price</label><input id="addWsMousePurchasePrice" type="number" step="0.01" min="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Keyboard -->
+        <div class="detail-card">
+          <div class="detail-card-head">Keyboard</div>
+          <div class="detail-card-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Mode</label>
+                <select id="addWsKeyboardMode" data-ws-mode="keyboard">
+                  <option value="">Skip</option>
+                  <option value="existing">Use Existing</option>
+                  <option value="new">Create New</option>
+                </select>
+              </div>
+              <div class="form-field ws-existing-block hidden" data-ws-existing="keyboard">
+                <label>Existing Asset Code</label>
+                <input id="addWsKeyboardCode" type="text" placeholder="KB-0001">
+              </div>
+            </div>
+            <div class="ws-new-block hidden" data-ws-new="keyboard">
+              <div class="form-grid">
+                <div class="form-field"><label>Brand</label><input id="addWsKeyboardBrand" type="text"></div>
+                <div class="form-field"><label>Model</label><input id="addWsKeyboardModel" type="text"></div>
+                <div class="form-field"><label>Serial Number</label><input id="addWsKeyboardSerialNumber" type="text"></div>
+                <div class="form-field"><label>Purchase Date</label><input id="addWsKeyboardPurchaseDate" type="date"></div>
+                <div class="form-field"><label>Purchase Price</label><input id="addWsKeyboardPurchasePrice" type="number" step="0.01" min="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- UPS -->
+        <div class="detail-card">
+          <div class="detail-card-head">UPS</div>
+          <div class="detail-card-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Mode</label>
+                <select id="addWsUpsMode" data-ws-mode="ups">
+                  <option value="">Skip</option>
+                  <option value="existing">Use Existing</option>
+                  <option value="new">Create New</option>
+                </select>
+              </div>
+              <div class="form-field ws-existing-block hidden" data-ws-existing="ups">
+                <label>Existing Asset Code</label>
+                <input id="addWsUpsCode" type="text" placeholder="UPS-0001">
+              </div>
+            </div>
+            <div class="ws-new-block hidden" data-ws-new="ups">
+              <div class="form-grid">
+                <div class="form-field"><label>Brand</label><input id="addWsUpsBrand" type="text"></div>
+                <div class="form-field"><label>Model</label><input id="addWsUpsModel" type="text"></div>
+                <div class="form-field"><label>Serial Number</label><input id="addWsUpsSerialNumber" type="text"></div>
+                <div class="form-field"><label>Capacity (VA)</label><input id="addWsUpsCapacityVa" type="text"></div>
+                <div class="form-field"><label>Purchase Date</label><input id="addWsUpsPurchaseDate" type="date"></div>
+                <div class="form-field"><label>Purchase Price</label><input id="addWsUpsPurchasePrice" type="number" step="0.01" min="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Printer -->
+        <div class="detail-card">
+          <div class="detail-card-head">Printer</div>
+          <div class="detail-card-body">
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Mode</label>
+                <select id="addWsPrinterMode" data-ws-mode="printer">
+                  <option value="">Skip</option>
+                  <option value="existing">Use Existing</option>
+                  <option value="new">Create New</option>
+                </select>
+              </div>
+              <div class="form-field ws-existing-block hidden" data-ws-existing="printer">
+                <label>Existing Asset Code</label>
+                <input id="addWsPrinterCode" type="text" placeholder="PRT-0001">
+              </div>
+            </div>
+            <div class="ws-new-block hidden" data-ws-new="printer">
+              <div class="form-grid">
+                <div class="form-field"><label>Brand</label><input id="addWsPrinterBrand" type="text"></div>
+                <div class="form-field"><label>Model</label><input id="addWsPrinterModel" type="text"></div>
+                <div class="form-field"><label>Serial Number</label><input id="addWsPrinterSerialNumber" type="text"></div>
+                <div class="form-field"><label>Printer Type</label><input id="addWsPrinterPrinterType" type="text"></div>
+                <div class="form-field"><label>Purchase Date</label><input id="addWsPrinterPurchaseDate" type="date"></div>
+                <div class="form-field"><label>Purchase Price</label><input id="addWsPrinterPurchasePrice" type="number" step="0.01" min="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button class="light-btn" type="button" data-action="close-add-workstation">Cancel</button>
+          <button class="action-btn" type="submit" id="addWsSubmitBtn">Save Workstation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

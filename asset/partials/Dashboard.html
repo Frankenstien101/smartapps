@@ -1,0 +1,27 @@
+<template id="dashboardViewTemplate">
+  <section id="view-dashboard" class="view active">
+    <div class="dashboard-command">
+      <div class="dashboard-hero">
+        <div></div>
+        <div class="dashboard-controls">
+          <span class="last-updated" id="dashboardLastUpdated">Last updated: —</span>
+          <button class="light-btn compact" type="button" data-action="refresh-dashboard"><img class="btn-icon" src="assets/images/icons/refresh-icon.svg" alt=""> Refresh</button>
+        </div>
+      </div>
+
+      <div class="command-kpi-grid" id="dashboardKpis"></div>
+
+      <div class="command-grid top-grid">
+        <div class="command-card" id="assetStatusCard"></div>
+        <div class="command-card" id="assetSiteCard"></div>
+        <div class="command-card" id="attentionCard"></div>
+      </div>
+
+      <div class="command-grid bottom-grid">
+        <div class="command-card" id="assetCategoryCard"></div>
+        <div class="command-card" id="maintenanceTicketCard"></div>
+        <div class="command-card dashboard-activity-card" id="recentActivityCard"></div>
+      </div>
+    </div>
+  </section>
+</template>

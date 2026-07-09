@@ -1,0 +1,227 @@
+<template id="operationsViewTemplate">
+  <section id="view-deploy" class="view">
+    <div class="operations-shell">
+      <div class="operation-grid">
+        <div class="section-card operation-panel">
+          <div class="card-head">
+            <div class="card-title-group">
+              <h3 class="card-title">Deploy Workstation</h3>
+              <span class="pill">Assignment workflow</span>
+            </div>
+            <button class="action-btn" type="button" data-action="open-add-workstation">New Deployment</button>
+          </div>
+          <div class="operation-copy">Create a workstation assignment, link available assets, and write the deployment record.</div>
+          <div class="operation-actions">
+            <button class="light-btn" type="button" data-view-target="assets">Review Assets</button>
+            <button class="light-btn" type="button" data-view-target="workstations">View Workstations</button>
+          </div>
+        </div>
+
+        <div class="section-card operation-panel">
+          <div class="card-head">
+            <div class="card-title-group">
+              <h3 class="card-title">Available Assets</h3>
+            </div>
+            <button class="light-btn compact-btn" type="button" data-action="refresh-operation">Refresh</button>
+          </div>
+          <div class="operation-list" id="deployAvailableList"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-transfer" class="view">
+    <div class="operations-shell">
+      <div class="operation-grid">
+        <form class="section-card operation-panel" id="operationTransferForm">
+          <div class="card-head">
+            <div class="card-title-group">
+              <h3 class="card-title">Transfer</h3>
+              <span class="pill">Asset or workstation</span>
+            </div>
+          </div>
+          <div class="operation-form-grid">
+            <label class="form-field">
+              <span>Transfer Type</span>
+              <select id="transferType">
+                <option value="asset">Single Asset</option>
+                <option value="workstation">Workstation / Main Asset No.</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Asset Code or Main Asset No.</span>
+              <input id="transferReference" type="text" placeholder="SU-0001 or BSPIDV0001" required>
+            </label>
+            <label class="form-field">
+              <span>Target Employee</span>
+              <input id="transferTarget" type="text" placeholder="Employee ID or exact name" required>
+            </label>
+            <label class="form-field">
+              <span>Remarks</span>
+              <input id="transferRemarks" type="text" placeholder="Reason for transfer">
+            </label>
+          </div>
+          <div class="operation-form-footer">
+            <button class="action-btn" type="submit">Transfer</button>
+            <span class="operation-status" id="transferStatus">Ready.</span>
+          </div>
+        </form>
+
+        <div class="section-card operation-panel">
+          <div class="card-head"><h3 class="card-title">Recent Transfers</h3></div>
+          <div class="operation-list" id="transferRecentList"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-checkin" class="view">
+    <div class="operations-shell">
+      <div class="operation-grid">
+        <form class="section-card operation-panel" id="operationCheckinForm">
+          <div class="card-head">
+            <div class="card-title-group">
+              <h3 class="card-title">Check-In Asset</h3>
+              <span class="pill">Return workflow</span>
+            </div>
+          </div>
+          <div class="operation-form-grid">
+            <label class="form-field">
+              <span>Asset Code</span>
+              <input id="checkinAssetCode" type="text" placeholder="Asset code" required>
+            </label>
+            <label class="form-field">
+              <span>Next Status</span>
+              <select id="checkinStatus">
+                <option value="Ready to Deploy">Ready to Deploy</option>
+                <option value="In Repair">In Repair</option>
+                <option value="Retired">Retired</option>
+              </select>
+            </label>
+            <label class="form-field span-2">
+              <span>Remarks</span>
+              <input id="checkinRemarks" type="text" placeholder="Return condition or notes">
+            </label>
+          </div>
+          <div class="operation-form-footer">
+            <button class="action-btn" type="submit">Check In</button>
+            <span class="operation-status" id="checkinStatusText">Ready.</span>
+          </div>
+        </form>
+
+        <div class="section-card operation-panel">
+          <div class="card-head"><h3 class="card-title">Recently Returned</h3></div>
+          <div class="operation-list" id="checkinRecentList"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-maintenance" class="view">
+    <div class="operations-shell">
+      <div class="pm-dashboard">
+        <div class="report-summary-card">
+          <span>Total Workstations</span>
+          <strong id="pmTotalCount">0</strong>
+        </div>
+        <div class="report-summary-card">
+          <span>Finished Preventive</span>
+          <strong id="pmDoneCount">0</strong>
+        </div>
+        <div class="report-summary-card">
+          <span>Remaining</span>
+          <strong id="pmRemainingCount">0</strong>
+        </div>
+        <div class="report-summary-card">
+          <span>Overdue</span>
+          <strong id="pmOverdueCount">0</strong>
+        </div>
+      </div>
+
+      <div class="section-card pm-filter-card">
+        <div class="report-filter-grid">
+          <div class="search-box">
+            <span class="search-prefix">Search</span>
+            <input id="pmSearch" type="text" placeholder="Search workstation ID, user, office...">
+          </div>
+          <div class="filter-box">
+            <input id="pmCycle" type="month">
+          </div>
+          <button class="light-btn" type="button" data-action="refresh-operation">Refresh</button>
+        </div>
+      </div>
+
+      <div class="pm-site-progress" id="pmSiteProgress"></div>
+
+      <div class="pm-layout">
+        <div class="section-card operation-panel">
+          <div class="card-head">
+            <div class="card-title-group">
+              <h3 class="card-title">Preventive Workstations</h3>
+              <span class="pill" id="pmCyclePill">Current Cycle</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="app-table pm-table">
+              <thead>
+                <tr>
+                  <th>Workstation ID</th>
+                  <th>User</th>
+                  <th>Site</th>
+                  <th>Office</th>
+                  <th>Last PM</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="pmWorkstationBody"></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <div id="pmTableMeta">Loading preventive maintenance records...</div>
+          </div>
+        </div>
+
+        <div class="section-card operation-panel pm-checklist-panel">
+          <div class="card-head">
+            <div class="card-title-group">
+              <h3 class="card-title" id="pmChecklistTitle">Checklist</h3>
+              <span class="pill" id="pmChecklistStatus">Select Workstation</span>
+            </div>
+          </div>
+          <form id="preventiveMaintenanceForm" class="pm-checklist-form">
+            <input id="pmSelectedMain" type="hidden">
+            <div class="pm-checklist-empty" id="pmChecklistEmpty">Select a workstation to open the preventive checklist.</div>
+            <div class="pm-checklist-fields hidden" id="pmChecklistFields">
+              <label><input type="checkbox" data-pm-check="systemUnitCleaned"> System unit cleaned</label>
+              <label><input type="checkbox" data-pm-check="monitorCleaned"> Monitor cleaned</label>
+              <label><input type="checkbox" data-pm-check="keyboardCleaned"> Keyboard cleaned</label>
+              <label><input type="checkbox" data-pm-check="mouseCleaned"> Mouse cleaned</label>
+              <label><input type="checkbox" data-pm-check="upsChecked"> UPS checked</label>
+              <label><input type="checkbox" data-pm-check="printerChecked"> Printer checked</label>
+              <label><input type="checkbox" data-pm-check="cablesOrganized"> Cables organized</label>
+              <label><input type="checkbox" data-pm-check="dustRemoved"> Dust removed</label>
+              <label><input type="checkbox" data-pm-check="powerTestDone"> Power test done</label>
+              <label><input type="checkbox" data-pm-check="networkTestDone"> Network test done</label>
+              <label class="form-field">
+                <span>Technician</span>
+                <input id="pmTechnician" type="text" placeholder="Technician name" value="Admin">
+              </label>
+              <label class="form-field">
+                <span>Remarks</span>
+                <textarea id="pmRemarks" rows="3" placeholder="Cleaning notes or issue found"></textarea>
+              </label>
+              <label class="pm-done-toggle">
+                <input id="pmDoneToggle" type="checkbox">
+                <span>Done preventive</span>
+              </label>
+              <div class="operation-form-footer">
+                <button class="action-btn" type="submit">Save Checklist</button>
+                <span class="operation-status" id="pmSaveStatus">Ready.</span>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
