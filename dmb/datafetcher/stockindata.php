@@ -13,21 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// ============================================
-// DATABASE CONNECTION
-// ============================================
-//try {
-//    $conn = new PDO(
-//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-//        "sa",
-//        'bspi.@dm1n'
-//    );
-//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-//} catch (PDOException $e) {
-//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-//    exit();
-//}
 
 // Get request method and action
 $method = $_SERVER['REQUEST_METHOD'];
@@ -989,6 +974,7 @@ function getSales($conn, $currentBranch, $userRole) {
         $branchFilter = "AND Branch = :branch";
     }
     
+    // FIXED: Format date as just YYYY-MM-DD without time
     $query = "SELECT TOP $limit
                 SaleID, 
                 ReceiptNo, 
@@ -998,7 +984,8 @@ function getSales($conn, $currentBranch, $userRole) {
                 PaymentMethod, 
                 AmountReceived, 
                 ChangeAmount,
-                FORMAT(SaleDate, 'yyyy-MM-dd HH:mm:ss') AS SaleDate,
+                FORMAT(SaleDate, 'yyyy-MM-dd') AS SaleDate,  -- Date only
+                FORMAT(SaleDate, 'HH:mm:ss') AS SaleTime,    -- Time separate
                 CreatedBy,
                 Status,
                 Branch

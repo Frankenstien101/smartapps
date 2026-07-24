@@ -258,21 +258,6 @@ if (!isset($_SESSION['username'])) {
             </div>
         </li>
 
-
-        <!-- INVENTORY -->
-        <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="collapse" href="#menuInventory" role="button" aria-expanded="false">
-                <i class="fa fa-box"></i> Inventory
-                <i class="fa fa-chevron-down float-end mt-1" style="font-size: 12px;"></i>
-            </a>
-            <div class="collapse submenu" id="menuInventory">
-                <a class="nav-link" href="?page=stock-in">Stock In</a>
-                <a class="nav-link" href="?page=stock-out">Stock Out</a>
-                <a class="nav-link" href="?page=stocktransfer">Stock Transfer</a>
-                <a class="nav-link" href="?page=inventorycount">Inventory Count</a>
-            </div>
-        </li>
-
         <!-- TRANSACTIONS -->
         <li class="nav-item">
             <a class="nav-link" data-bs-toggle="collapse" href="#menuTransactions" role="button" aria-expanded="false">

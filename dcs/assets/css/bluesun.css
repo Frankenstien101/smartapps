@@ -1,0 +1,417 @@
+/* =====================================================================
+   BlueSun Digital Call Sheet — Design System
+   Palette grounded in the brand name itself: deep navy sky + gold sun.
+   Mono type used for anything numeric/coded, echoing the product's core
+   idea — this is a system of calculation, not guesswork.
+   ===================================================================== */
+
+:root {
+    --ink:        #0F2A3D;   /* deep navy — sidebar, headings */
+    --ink-soft:   #52697B;   /* muted navy-gray — secondary text */
+    --sun:        #F2A93B;   /* gold — primary actions, brand accent */
+    --sun-deep:   #D48F1F;   /* gold hover/active */
+    --sky:        #3E93BF;   /* sky blue — links, info accents */
+    --paper:      #F3F7FA;   /* page background */
+    --paper-deep: #E7EEF2;   /* subtle panel/row tint */
+    --ok:         #2E9E6B;   /* success / healthy stock / approved */
+    --ok-deep:    #227A53;
+    --crimson:    #C6314A;   /* danger / low stock / rejected */
+    --crimson-deep:#A32439;
+    --line:       #DCE4EA;   /* hairline borders */
+    --white:      #FFFFFF;
+
+    --font-display: 'Sora', system-ui, sans-serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+    --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* ---------- Base ---------- */
+
+body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .navbar-brand, .modal-title {
+    font-family: var(--font-display);
+    color: var(--ink);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+h2 { font-size: 1.5rem; margin-bottom: 1.1rem; }
+
+a { color: var(--sky); }
+a:hover { color: var(--ink); }
+
+/* Anything numeric/coded reads in mono, sitewide, automatically:
+   quantities, prices, codes, dates — no per-page changes needed. */
+td, .badge, .navbar-text {
+    font-variant-numeric: tabular-nums;
+}
+table td, table th {
+    font-family: var(--font-body);
+}
+table td:has(> input[type="number"]),
+input[type="number"], input[type="date"] {
+    font-family: var(--font-mono);
+}
+
+/* ---------- Shell layout (sidebar + main) ---------- */
+
+.bs-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.bs-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--ink);
+    color: #CBD8E1;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 1030;
+    transition: transform 0.2s ease;
+}
+
+.bs-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.4rem 1.3rem 1.2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.bs-brand-mark {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--sun), var(--sun-deep));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.bs-brand-text {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.01em;
+}
+.bs-brand-text strong { color: var(--sun); font-weight: 800; }
+.bs-brand-sub {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #7C93A3;
+    margin-top: 1px;
+}
+
+.bs-nav {
+    flex: 1;
+    padding: 0.9rem 0.7rem;
+    overflow-y: auto;
+}
+
+.bs-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    color: #B9CBD8;
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    margin-bottom: 0.15rem;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.bs-nav-link i { font-size: 1rem; width: 18px; text-align: center; opacity: 0.85; }
+.bs-nav-link:hover { background: rgba(255,255,255,0.06); color: var(--white); }
+.bs-nav-link.active { background: rgba(242,169,59,0.14); color: var(--sun); }
+.bs-nav-link.active i { opacity: 1; }
+
+.bs-nav-divider {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5E7789;
+    padding: 0.9rem 0.8rem 0.35rem;
+}
+
+.bs-user {
+    padding: 1rem 1.3rem 1.2rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+.bs-user-name { color: var(--white); font-weight: 600; font-size: 0.88rem; }
+.bs-user-role {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sun);
+    background: rgba(242,169,59,0.12);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.bs-logout {
+    display: block;
+    margin-top: 0.8rem;
+    font-size: 0.82rem;
+    color: #8FA6B7;
+    text-decoration: none;
+}
+.bs-logout:hover { color: var(--crimson); }
+
+.bs-main {
+    margin-left: 240px;
+    flex: 1;
+    min-width: 0;
+}
+
+.bs-topbar {
+    display: none; /* only shown on mobile, see media query */
+    align-items: center;
+    justify-content: space-between;
+    background: var(--ink);
+    padding: 0.8rem 1.1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+.bs-topbar-toggle {
+    background: none; border: none; color: var(--white); font-size: 1.4rem; line-height: 1;
+}
+
+.bs-content {
+    padding: 1.8rem 2.2rem 3rem;
+    max-width: 1400px;
+}
+
+@media (max-width: 900px) {
+    .bs-sidebar { transform: translateX(-100%); }
+    .bs-sidebar.bs-open { transform: translateX(0); }
+    .bs-main { margin-left: 0; }
+    .bs-topbar { display: flex; }
+    .bs-content { padding: 1.3rem 1.1rem 2.5rem; }
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15,42,61,0.04);
+    margin-bottom: 1.4rem;
+}
+.card-header {
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--ink);
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Dashboard stat cards — flat brand-colored panels, not the default
+   Bootstrap "bg-primary text-white" template look */
+.bs-stat {
+    border-radius: 12px;
+    padding: 1.3rem 1.4rem;
+    color: var(--white);
+    position: relative;
+    overflow: hidden;
+    min-height: 118px;
+}
+.bs-stat::after {
+    content: "";
+    position: absolute;
+    right: -18px; top: -18px;
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+}
+.bs-stat-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+.bs-stat-value {
+    font-family: var(--font-mono);
+    font-size: 2.1rem;
+    font-weight: 600;
+    margin-top: 0.3rem;
+}
+.bs-stat.ink   { background: var(--ink); }
+.bs-stat.sun   { background: linear-gradient(135deg, var(--sun), var(--sun-deep)); }
+.bs-stat.ok    { background: linear-gradient(135deg, var(--ok), var(--ok-deep)); }
+.bs-stat.sky   { background: linear-gradient(135deg, var(--sky), #2C6E90); }
+
+/* ---------- Buttons ---------- */
+
+.btn { border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+.btn-primary { background: var(--ink); border-color: var(--ink); }
+.btn-primary:hover { background: #163A52; border-color: #163A52; }
+.btn-success { background: var(--ok); border-color: var(--ok); }
+.btn-success:hover { background: var(--ok-deep); border-color: var(--ok-deep); }
+.btn-danger { background: var(--crimson); border-color: var(--crimson); }
+.btn-danger:hover { background: var(--crimson-deep); border-color: var(--crimson-deep); }
+.btn-warning { background: var(--sun); border-color: var(--sun); color: var(--ink); }
+.btn-warning:hover { background: var(--sun-deep); border-color: var(--sun-deep); color: var(--white); }
+.btn-info { background: var(--sky); border-color: var(--sky); color: var(--white); }
+.btn-info:hover { background: #2C6E90; border-color: #2C6E90; color: var(--white); }
+.btn-secondary { background: #6B7F8D; border-color: #6B7F8D; }
+
+/* ---------- Status pills (the signature element) ----------
+   Every status badge sitewide — call sheets, POs, users — reads as a
+   small dot + label, recolored from the token palette. One consistent
+   visual language for "where is this thing right now." */
+
+.badge {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.74rem;
+    letter-spacing: 0.01em;
+    padding: 0.42em 0.75em 0.42em 0.6em;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+}
+.badge::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+}
+.badge.bg-secondary { background: #E7EBEE !important; color: #52697B !important; }
+.badge.bg-warning   { background: rgba(242,169,59,0.16) !important; color: #9C6811 !important; }
+.badge.bg-success   { background: rgba(46,158,107,0.14) !important; color: var(--ok-deep) !important; }
+.badge.bg-info      { background: rgba(62,147,191,0.14) !important; color: #235B78 !important; }
+.badge.bg-danger    { background: rgba(198,49,74,0.12) !important; color: var(--crimson-deep) !important; }
+
+/* ---------- Tables ---------- */
+
+.table {
+    --bs-table-bg: transparent;
+    font-size: 0.92rem;
+}
+.table > thead {
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.table > thead > tr > th {
+    border-bottom: 2px solid var(--line);
+    background: transparent;
+}
+.table-bordered, .table-bordered > :not(caption) > * {
+    border-color: var(--line);
+}
+.table > tbody > tr:hover {
+    background: var(--paper-deep);
+}
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: var(--ink) !important;
+    border-color: var(--ink) !important;
+    color: var(--white) !important;
+}
+
+/* ---------- Forms ---------- */
+
+.form-control, .form-select {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 0.92rem;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--sky);
+    box-shadow: 0 0 0 0.2rem rgba(62,147,191,0.15);
+}
+label { font-weight: 600; font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 0.3rem; }
+
+/* ---------- Alerts ---------- */
+
+.alert { border-radius: 10px; border: none; font-size: 0.92rem; }
+.alert-danger  { background: rgba(198,49,74,0.1); color: var(--crimson-deep); }
+.alert-success { background: rgba(46,158,107,0.1); color: var(--ok-deep); }
+.alert-info    { background: rgba(62,147,191,0.1); color: #235B78; }
+
+/* ---------- Modals ---------- */
+
+.modal-content { border-radius: 14px; border: none; }
+.modal-header { border-bottom: 1px solid var(--line); }
+.modal-footer { border-top: 1px solid var(--line); }
+
+/* ---------- Login page ---------- */
+
+.bs-login-shell {
+    min-height: 100vh;
+    display: flex;
+}
+.bs-login-brand {
+    flex: 1;
+    background: linear-gradient(160deg, var(--ink) 0%, #163A52 60%, #1F4A63 100%);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 3rem;
+    position: relative;
+    overflow: hidden;
+}
+.bs-login-brand::after {
+    content: "";
+    position: absolute;
+    width: 460px; height: 460px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(242,169,59,0.35), transparent 70%);
+    right: -160px; bottom: -160px;
+}
+.bs-login-tagline {
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.25;
+    max-width: 420px;
+    position: relative;
+    z-index: 1;
+}
+.bs-login-tagline .accent { color: var(--sun); }
+.bs-login-form-side {
+    width: 440px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--white);
+}
+.bs-login-card { width: 100%; max-width: 340px; }
+@media (max-width: 860px) {
+    .bs-login-brand { display: none; }
+    .bs-login-form-side { width: 100%; }
+}

@@ -13,22 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// ============================================
-// DATABASE CONNECTION
-// ============================================
-//try {
-//    $conn = new PDO(
-//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
-//        "sa",
-//        'bspi.@dm1n'
-//    );
-//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-//} catch (PDOException $e) {
-//    echo json_encode(['error' => 'Database connection failed', 'message' => $e->getMessage()]);
-//    exit();
-//}
-
 // Start session for user tracking
 session_start();
 $currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch';
@@ -123,7 +107,7 @@ function getInventorySummary($conn, $currentBranch) {
     $query = "SELECT 
                 COUNT(*) AS TotalProducts,
                 ISNULL(SUM(AvailableQuantity), 0) AS TotalUnits,
-                ISNULL(SUM(AvailableQuantity * SellingPrice), 0) AS TotalInventoryValue,
+                ISNULL(SUM(AvailableQuantity * (SellingPrice - ISNULL([Less], 0))), 0) AS TotalInventoryValue,
                 ISNULL(SUM(AvailableQuantity * CostPrice), 0) AS TotalCostValue,
                 ISNULL(AVG(SellingPrice), 0) AS AveragePrice,
                 COUNT(CASE WHEN AvailableQuantity = 0 THEN 1 END) AS OutOfStockCount,
@@ -133,11 +117,12 @@ function getInventorySummary($conn, $currentBranch) {
               WHERE Branch = :branch";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':branch' => $currentBranch]);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $summary = $stmt->fetch(PDO::FETCH_ASSOC);
     
     // Calculate potential profit
-    $summary['PotentialProfit'] = $summary['TotalInventoryValue'] - $summary['TotalCostValue'];
+    $summary['PotentialProfit'] = ($summary['TotalInventoryValue'] ?? 0) - ($summary['TotalCostValue'] ?? 0);
     
     echo json_encode(['success' => true, 'data' => $summary]);
 }
@@ -154,14 +139,19 @@ function getLowStockReport($conn, $currentBranch) {
                 AvailableQuantity, 
                 CostPrice, 
                 SellingPrice,
+                ISNULL([Less], 0) AS Discount,
+                (SellingPrice - ISNULL([Less], 0)) AS DiscountedPrice,
                 (SellingPrice - CostPrice) AS ProfitPerUnit,
-                (AvailableQuantity * SellingPrice) AS TotalValue
+                (AvailableQuantity * (SellingPrice - ISNULL([Less], 0))) AS TotalValue
               FROM Products 
-              WHERE AvailableQuantity <= :threshold AND Branch = :branch
+              WHERE AvailableQuantity <= :threshold 
+              AND Branch = :branch 
               ORDER BY AvailableQuantity ASC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':threshold' => $threshold, ':branch' => $currentBranch]);
+    $stmt->bindParam(':threshold', $threshold);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $summary = [
@@ -193,7 +183,10 @@ function getStockMovementReport($conn, $currentBranch) {
               ORDER BY NetChange DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':start' => $startDate, ':end' => $endDatePlus, ':branch' => $currentBranch]);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $movements = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $summary = [
@@ -211,17 +204,18 @@ function getCategoryReport($conn, $currentBranch) {
                 Category,
                 COUNT(*) AS ProductCount,
                 ISNULL(SUM(AvailableQuantity), 0) AS TotalUnits,
-                ISNULL(SUM(AvailableQuantity * SellingPrice), 0) AS TotalValue,
+                ISNULL(SUM(AvailableQuantity * (SellingPrice - ISNULL([Less], 0))), 0) AS TotalValue,
                 ISNULL(AVG(SellingPrice), 0) AS AveragePrice,
                 ISNULL(SUM(AvailableQuantity * CostPrice), 0) AS TotalCost,
-                (ISNULL(SUM(AvailableQuantity * SellingPrice), 0) - ISNULL(SUM(AvailableQuantity * CostPrice), 0)) AS PotentialProfit
+                (ISNULL(SUM(AvailableQuantity * (SellingPrice - ISNULL([Less], 0))), 0) - ISNULL(SUM(AvailableQuantity * CostPrice), 0)) AS PotentialProfit
               FROM Products
               WHERE Branch = :branch
               GROUP BY Category
               ORDER BY TotalValue DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':branch' => $currentBranch]);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $totalValue = array_sum(array_column($categories, 'TotalValue'));
@@ -236,16 +230,18 @@ function getBrandReport($conn, $currentBranch) {
     $query = "SELECT 
                 Brand,
                 COUNT(*) AS ProductCount,
-                ISNULL(SUM(CurrentStock), 0) AS TotalUnits,
-                ISNULL(SUM(CurrentStock * SellingPrice), 0) AS TotalValue,
+                ISNULL(SUM(AvailableQuantity), 0) AS TotalUnits,
+                ISNULL(SUM(AvailableQuantity * (SellingPrice - ISNULL([Less], 0))), 0) AS TotalValue,
                 ISNULL(AVG(SellingPrice), 0) AS AveragePrice
               FROM Products
-              WHERE Brand IS NOT NULL AND Brand != '' AND Branch = :branch
+              WHERE Brand IS NOT NULL AND Brand != '' 
+              AND Branch = :branch
               GROUP BY Brand
               ORDER BY TotalValue DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':branch' => $currentBranch]);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $brands = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $brands]);
@@ -255,21 +251,31 @@ function getProductDetails($conn, $currentBranch) {
     $category = $_GET['category'] ?? 'all';
     $brand = $_GET['brand'] ?? 'all';
     $search = $_GET['search'] ?? '';
-    $limit = intval($_GET['limit'] ?? 100);
+    $limit = intval($_GET['limit'] ?? 1000);
     
     $categoryFilter = $category !== 'all' ? "AND Category = :category" : "";
     $brandFilter = $brand !== 'all' ? "AND Brand = :brand" : "";
     $searchFilter = $search !== '' ? "AND (ProductName LIKE :search OR ProductCode LIKE :search)" : "";
     
     $query = "SELECT TOP $limit
-                ProductID, ProductCode, ProductName, Category, Brand,
-                AvailableQuantity, CostPrice, SellingPrice,
-                (SellingPrice - CostPrice) AS ProfitPerUnit,
-                (AvailableQuantity * SellingPrice) AS TotalValue,
+                ProductID, 
+                ProductCode, 
+                ProductName, 
+                Category, 
+                Brand,
+                AvailableQuantity, 
+                CostPrice, 
+                SellingPrice,
+                ISNULL([Less], 0) AS Discount,
+                (SellingPrice - ISNULL([Less], 0)) AS DiscountedPrice,
+                ((SellingPrice - ISNULL([Less], 0)) - CostPrice) AS ProfitPerUnit,
+                (AvailableQuantity * (SellingPrice - ISNULL([Less], 0))) AS TotalValue,
                 (AvailableQuantity * CostPrice) AS TotalCost,
-                CreatedAt, UpdatedAt
+                CreatedAt, 
+                UpdatedAt
               FROM Products
-              WHERE Branch = :branch $categoryFilter $brandFilter $searchFilter
+              WHERE Branch = :branch
+              $categoryFilter $brandFilter $searchFilter
               ORDER BY ProductName";
     
     $stmt = $conn->prepare($query);
@@ -298,15 +304,16 @@ function getInventoryValueReport($conn, $currentBranch) {
     $query = "SELECT 
                 FORMAT(CreatedAt, 'yyyy-MM-dd') AS Date,
                 COUNT(*) AS ProductsAdded,
-                ISNULL(SUM(CurrentStock * SellingPrice), 0) AS InventoryValue,
-                ISNULL(SUM(CurrentStock * CostPrice), 0) AS CostValue
+                ISNULL(SUM(AvailableQuantity * (SellingPrice - ISNULL([Less], 0))), 0) AS InventoryValue,
+                ISNULL(SUM(AvailableQuantity * CostPrice), 0) AS CostValue
               FROM Products
               WHERE Branch = :branch
               GROUP BY FORMAT(CreatedAt, 'yyyy-MM-dd')
               ORDER BY Date DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':branch' => $currentBranch]);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $values = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'data' => $values]);
@@ -337,7 +344,10 @@ function getStockInReport($conn, $currentBranch) {
               ORDER BY TransactionDate DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':start' => $startDate, ':end' => $endDatePlus, ':branch' => $currentBranch]);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $stockIn = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $summary = [
@@ -370,7 +380,10 @@ function getStockOutReport($conn, $currentBranch) {
               ORDER BY TransactionDate DESC";
     
     $stmt = $conn->prepare($query);
-    $stmt->execute([':start' => $startDate, ':end' => $endDatePlus, ':branch' => $currentBranch]);
+    $stmt->bindParam(':start', $startDate);
+    $stmt->bindParam(':end', $endDatePlus);
+    $stmt->bindParam(':branch', $currentBranch);
+    $stmt->execute();
     $stockOut = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $summary = [
@@ -388,24 +401,25 @@ function getTopProducts($conn, $currentBranch) {
     if ($type === 'value') {
         $query = "SELECT TOP $limit
                     ProductID, ProductCode, ProductName, Category, Brand,
-                    CurrentStock, SellingPrice,
-                    (CurrentStock * SellingPrice) AS InventoryValue
+                    AvailableQuantity, SellingPrice, ISNULL([Less], 0) AS Discount,
+                    (SellingPrice - ISNULL([Less], 0)) AS DiscountedPrice,
+                    (AvailableQuantity * (SellingPrice - ISNULL([Less], 0))) AS InventoryValue
                   FROM Products
                   WHERE Branch = :branch
                   ORDER BY InventoryValue DESC";
     } elseif ($type === 'quantity') {
         $query = "SELECT TOP $limit
                     ProductID, ProductCode, ProductName, Category, Brand,
-                    CurrentStock, SellingPrice
+                    AvailableQuantity, SellingPrice
                   FROM Products
                   WHERE Branch = :branch
-                  ORDER BY CurrentStock DESC";
+                  ORDER BY AvailableQuantity DESC";
     } else {
         $query = "SELECT TOP $limit
                     ProductID, ProductCode, ProductName, Category, Brand,
-                    CurrentStock, CostPrice, SellingPrice,
-                    (SellingPrice - CostPrice) AS ProfitPerUnit,
-                    (CurrentStock * (SellingPrice - CostPrice)) AS PotentialProfit
+                    AvailableQuantity, CostPrice, SellingPrice, ISNULL([Less], 0) AS Discount,
+                    ((SellingPrice - ISNULL([Less], 0)) - CostPrice) AS ProfitPerUnit,
+                    (AvailableQuantity * ((SellingPrice - ISNULL([Less], 0)) - CostPrice)) AS PotentialProfit
                   FROM Products
                   WHERE Branch = :branch
                   ORDER BY PotentialProfit DESC";
@@ -440,7 +454,10 @@ function generateCustomReport($conn, $data) {
                   ORDER BY Date ASC";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([':start' => $startDate, ':end' => $endDatePlus, ':branch' => $currentBranch]);
+        $stmt->bindParam(':start', $startDate);
+        $stmt->bindParam(':end', $endDatePlus);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
         $report = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $query = "SELECT 
@@ -449,13 +466,16 @@ function generateCustomReport($conn, $data) {
                     Brand,
                     AvailableQuantity AS CurrentStock,
                     SellingPrice,
-                    (CurrentStock * SellingPrice) AS TotalValue
+                    ISNULL([Less], 0) AS Discount,
+                    (SellingPrice - ISNULL([Less], 0)) AS DiscountedPrice,
+                    (AvailableQuantity * (SellingPrice - ISNULL([Less], 0))) AS TotalValue
                   FROM Products
                   WHERE Branch = :branch
                   ORDER BY TotalValue DESC";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([':branch' => $currentBranch]);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
         $report = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
@@ -464,19 +484,26 @@ function generateCustomReport($conn, $data) {
 
 function exportReport($conn, $currentBranch) {
     $type = $_GET['type'] ?? 'inventory';
-    $format = $_GET['format'] ?? 'csv';
     
     if ($type === 'inventory') {
         $query = "SELECT 
-                    ProductCode, ProductName, Category, Brand,
-                    AvailableQuantity, CostPrice, SellingPrice,
-                    (AvailableQuantity * SellingPrice) AS TotalValue
+                    ProductCode, 
+                    ProductName, 
+                    Category, 
+                    Brand,
+                    AvailableQuantity, 
+                    CostPrice, 
+                    SellingPrice,
+                    ISNULL([Less], 0) AS Discount,
+                    (SellingPrice - ISNULL([Less], 0)) AS DiscountedPrice,
+                    (AvailableQuantity * (SellingPrice - ISNULL([Less], 0))) AS TotalValue
                   FROM Products
                   WHERE Branch = :branch
                   ORDER BY ProductName";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([':branch' => $currentBranch]);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $filename = "inventory_report_" . date('Y-m-d') . ".csv";
@@ -486,7 +513,7 @@ function exportReport($conn, $currentBranch) {
         echo "\xEF\xBB\xBF";
         
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Product Code', 'Product Name', 'Category', 'Brand', 'Available Quantity', 'Cost Price', 'Selling Price', 'Total Value']);
+        fputcsv($output, ['Product Code', 'Product Name', 'Category', 'Brand', 'Available Quantity', 'Cost Price', 'Selling Price', 'Discounted Price', 'Discount', 'Total Value']);
         
         foreach ($data as $row) {
             fputcsv($output, [
@@ -497,6 +524,8 @@ function exportReport($conn, $currentBranch) {
                 $row['AvailableQuantity'],
                 number_format($row['CostPrice'], 2),
                 number_format($row['SellingPrice'], 2),
+                number_format($row['DiscountedPrice'] ?? $row['SellingPrice'], 2),
+                number_format($row['Discount'] ?? 0, 2),
                 number_format($row['TotalValue'], 2)
             ]);
         }
@@ -505,13 +534,21 @@ function exportReport($conn, $currentBranch) {
         exit();
     } elseif ($type === 'lowstock') {
         $query = "SELECT 
-                    ProductCode, ProductName, Category, Brand, AvailableQuantity, SellingPrice
+                    ProductCode, 
+                    ProductName, 
+                    Category, 
+                    Brand, 
+                    AvailableQuantity, 
+                    SellingPrice,
+                    ISNULL([Less], 0) AS Discount,
+                    (SellingPrice - ISNULL([Less], 0)) AS DiscountedPrice
                   FROM Products
                   WHERE AvailableQuantity < 10 AND Branch = :branch
                   ORDER BY AvailableQuantity ASC";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([':branch' => $currentBranch]);
+        $stmt->bindParam(':branch', $currentBranch);
+        $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $filename = "low_stock_report_" . date('Y-m-d') . ".csv";
@@ -521,7 +558,7 @@ function exportReport($conn, $currentBranch) {
         echo "\xEF\xBB\xBF";
         
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Product Code', 'Product Name', 'Category', 'Brand', 'Available Quantity', 'Selling Price']);
+        fputcsv($output, ['Product Code', 'Product Name', 'Category', 'Brand', 'Available Quantity', 'Selling Price', 'Discounted Price', 'Discount']);
         
         foreach ($data as $row) {
             fputcsv($output, [
@@ -530,7 +567,9 @@ function exportReport($conn, $currentBranch) {
                 $row['Category'],
                 $row['Brand'],
                 $row['AvailableQuantity'],
-                number_format($row['SellingPrice'], 2)
+                number_format($row['SellingPrice'], 2),
+                number_format($row['DiscountedPrice'] ?? $row['SellingPrice'], 2),
+                number_format($row['Discount'] ?? 0, 2)
             ]);
         }
         

@@ -1,4 +1,5 @@
 <?php
+
 try {
     $conn = new PDO(
       //  "sqlsrv:Server=localhost;Database=SIDJAN",
@@ -11,5 +12,7 @@ try {
 } catch (PDOException $e) {
     
     echo "❌ Error connecting to Server: " . $e->getMessage();
+    
 }
+
 ?>

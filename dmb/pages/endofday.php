@@ -50,6 +50,7 @@ $currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch
     .stat-icon.teal { background: rgba(0, 150, 136, 0.15); color: #009688; }
     .stat-icon.danger { background: rgba(220, 53, 69, 0.15); color: #dc3545; }
     .stat-icon.purple { background: rgba(156, 39, 176, 0.15); color: #9c27b0; }
+    .stat-icon.gcash { background: rgba(0, 150, 136, 0.15); color: #009688; }
     
     .stat-value {
         font-size: 24px;
@@ -487,22 +488,32 @@ $currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch
             <div class="stat-label">Cash Received</div>
         </div>
         <div class="stat-card">
+            <div class="stat-icon gcash"><i class="fas fa-mobile-alt"></i></div>
+            <div class="stat-value" id="gcashReceived">₱0</div>
+            <div class="stat-label">GCash Received</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple"><i class="fas fa-credit-card"></i></div>
+            <div class="stat-value" id="cardReceived">₱0</div>
+            <div class="stat-label">Card Payments</div>
+        </div>
+        <div class="stat-card">
             <div class="stat-icon danger"><i class="fas fa-money-bill-wave"></i></div>
             <div class="stat-value" id="totalDeposits">₱0</div>
             <div class="stat-label">Total Deposits</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon purple"><i class="fas fa-receipt"></i></div>
+            <div class="stat-icon teal"><i class="fas fa-receipt"></i></div>
             <div class="stat-value" id="totalExpenses">₱0</div>
             <div class="stat-label">Total Expenses</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon teal"><i class="fas fa-sun"></i></div>
+            <div class="stat-icon info"><i class="fas fa-sun"></i></div>
             <div class="stat-value" id="sodDisplay">₱0</div>
             <div class="stat-label">Start of Day</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon info"><i class="fas fa-calculator"></i></div>
+            <div class="stat-icon warning"><i class="fas fa-calculator"></i></div>
             <div class="stat-value" id="expectedCash">₱0</div>
             <div class="stat-label">Expected Cash</div>
         </div>
@@ -593,6 +604,8 @@ $currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch
                             <th>Date</th>
                             <th>Total Sales</th>
                             <th>Cash Received</th>
+                            <th>GCash</th>
+                            <th>Card</th>
                             <th>Deposits</th>
                             <th>Expenses</th>
                             <th>Expected Cash</th>
@@ -603,7 +616,7 @@ $currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
-                        <tr><td colspan="10" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr>
+                        <tr><td colspan="12" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -642,6 +655,14 @@ $currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch
             <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;border-bottom:1px dotted #eee;">
                 <span>Cash Received</span>
                 <span style="font-weight:bold;" id="printCashReceived">₱0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;border-bottom:1px dotted #eee;">
+                <span>GCash Received</span>
+                <span style="font-weight:bold;color:#009688;" id="printGcashReceived">₱0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;border-bottom:1px dotted #eee;">
+                <span>Card Payments</span>
+                <span style="font-weight:bold;color:#9c27b0;" id="printCardReceived">₱0</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;border-bottom:1px dotted #eee;">
                 <span>Deposits</span>
@@ -907,10 +928,13 @@ function renderDenominations(containerId, denominations, type) {
     if (!container) return;
     container.innerHTML = '';
     let total = 0;
+    
     denominations.forEach(denom => {
-        const value = eodData[`${type}_${denom}`] || 0;
+        const key = `${type}_${denom}`;
+        const value = eodData[key] || 0;
         const amount = denom * value;
         total += amount;
+        
         const div = document.createElement('div');
         div.className = 'denom-item';
         div.innerHTML = `
@@ -922,8 +946,17 @@ function renderDenominations(containerId, denominations, type) {
         `;
         container.appendChild(div);
     });
+    
     const totalId = type === 'bill' ? 'totalBills' : 'totalCoins';
     document.getElementById(totalId).textContent = `₱${formatNumber(total)}`;
+    
+    if (type === 'bill') {
+        eodData._totalBills = total;
+    } else {
+        eodData._totalCoins = total;
+    }
+    eodData._totalCashCounted = (eodData._totalBills || 0) + (eodData._totalCoins || 0);
+    
     return total;
 }
 
@@ -953,25 +986,27 @@ function calculateTotals() {
     return { totalBills, totalCoins, totalCashCounted };
 }
 
-// ============================================
-// UPDATE SUMMARY
-// ============================================
 function updateSummary() {
+    // Get values directly from the data, not from DOM
     const sales = parseFloat(document.getElementById('totalSales').textContent.replace(/[₱,]/g, '')) || 0;
     const transactions = parseInt(document.getElementById('transactionCount').textContent) || 0;
     const cashReceived = parseFloat(document.getElementById('cashReceived').textContent.replace(/[₱,]/g, '')) || 0;
-    const cardReceived = parseFloat(document.getElementById('summaryCard').textContent.replace(/[₱,]/g, '')) || 0;
-    const gcashReceived = parseFloat(document.getElementById('summaryGcash').textContent.replace(/[₱,]/g, '')) || 0;
+    const gcashReceived = parseFloat(document.getElementById('gcashReceived').textContent.replace(/[₱,]/g, '')) || 0;
+    const cardReceived = parseFloat(document.getElementById('cardReceived').textContent.replace(/[₱,]/g, '')) || 0;
     const totalReceived = cashReceived + cardReceived + gcashReceived;
     const cashCounted = eodData._totalCashCounted || 0;
     const bills = eodData._totalBills || 0;
     const coins = eodData._totalCoins || 0;
     const sod = parseFloat(document.getElementById('sodAmount').value) || sodAmount || 0;
-    const deposits = totalDeposits || 0;
-    const expenses = totalExpenses || 0;
+    
+    // Use the global variables directly
+    const deposits = totalDeposits;
+    const expenses = totalExpenses;
+    
     const expectedCashOnHand = sod + cashReceived - deposits - expenses;
     const cashDifference = cashCounted - expectedCashOnHand;
     
+    // Update all displays
     document.getElementById('sodDisplay').innerHTML = '₱' + formatNumber(sod);
     document.getElementById('expectedCash').innerHTML = '₱' + formatNumber(expectedCashOnHand);
     document.getElementById('totalDeposits').innerHTML = '₱' + formatNumber(deposits);
@@ -1001,9 +1036,6 @@ function updateSummary() {
     }
 }
 
-// ============================================
-// LOAD EOD
-// ============================================
 async function loadEod() {
     const date = document.getElementById('eodDate').value;
     currentDate = date;
@@ -1014,16 +1046,27 @@ async function loadEod() {
     const salesResult = await apiCall(`getDailySales&date=${date}`);
     if (salesResult.success && salesResult.data) {
         const data = salesResult.data.summary;
+        
         document.getElementById('totalSales').innerHTML = '₱' + formatNumber(data.TotalSales);
         document.getElementById('transactionCount').innerText = data.TransactionCount || 0;
         document.getElementById('cashReceived').innerHTML = '₱' + formatNumber(data.CashReceived);
-        paymentBreakdown = { cash: data.CashReceived || 0, card: data.CardReceived || 0, gcash: data.GcashReceived || 0 };
+        document.getElementById('gcashReceived').innerHTML = '₱' + formatNumber(data.GcashReceived || 0);
+        document.getElementById('cardReceived').innerHTML = '₱' + formatNumber(data.CardReceived || 0);
+        
+        paymentBreakdown = { 
+            cash: data.CashReceived || 0, 
+            card: data.CardReceived || 0, 
+            gcash: data.GcashReceived || 0 
+        };
+        
         totalDeposits = data.TotalDeposits || 0;
         depositCount = data.DepositCount || 0;
         totalExpenses = data.TotalExpenses || 0;
         expenseCount = data.ExpenseCount || 0;
+        
         document.getElementById('totalDeposits').innerHTML = '₱' + formatNumber(totalDeposits);
         document.getElementById('totalExpenses').innerHTML = '₱' + formatNumber(totalExpenses);
+        
         if (data.SodAmount !== undefined) {
             sodAmount = data.SodAmount || 0;
             document.getElementById('sodAmount').value = sodAmount;
@@ -1034,40 +1077,56 @@ async function loadEod() {
         }
     }
     
+    eodData = {};
+    
     const eodResult = await apiCall(`getEodReport&date=${date}`);
     if (eodResult.success && eodResult.data) {
         const data = eodResult.data;
+        
+        // OVERRIDE with EOD data
+        if (data.expenses) {
+            totalExpenses = data.expenses.TotalExpenses || 0;
+            expenseCount = data.expenses.ExpenseCount || 0;
+        }
+        
+        if (data.deposits) {
+            totalDeposits = data.deposits.TotalDeposits || 0;
+            depositCount = data.deposits.DepositCount || 0;
+        }
+        
         if (data.has_eod && data.eod) {
             currentEodId = data.eod.EodID;
             const status = data.eod.Status || 'draft';
             const statusEl = document.getElementById('eodStatus');
             statusEl.className = status === 'submitted' ? 'badge-submitted' : 'badge-draft';
             statusEl.textContent = status === 'submitted' ? 'SUBMITTED' : 'DRAFT';
-            if (data.eod.Bills && data.eod.Bills.length > 0) {
-                data.eod.Bills.forEach(bill => { eodData[`bill_${bill.denomination}`] = bill.quantity; });
+            
+            if (data.eod.Bills && Array.isArray(data.eod.Bills)) {
+                data.eod.Bills.forEach(bill => {
+                    if (bill.denomination && bill.quantity !== undefined) {
+                        eodData[`bill_${bill.denomination}`] = bill.quantity;
+                    }
+                });
             }
-            if (data.eod.Coins && data.eod.Coins.length > 0) {
-                data.eod.Coins.forEach(coin => { eodData[`coin_${coin.denomination}`] = coin.quantity; });
+            
+            if (data.eod.Coins && Array.isArray(data.eod.Coins)) {
+                data.eod.Coins.forEach(coin => {
+                    if (coin.denomination && coin.quantity !== undefined) {
+                        eodData[`coin_${coin.denomination}`] = coin.quantity;
+                    }
+                });
             }
+            
             document.getElementById('eodNotes').value = data.eod.Notes || '';
             if (data.eod.SodAmount !== undefined && data.eod.SodAmount > 0) {
                 sodAmount = data.eod.SodAmount;
                 document.getElementById('sodAmount').value = sodAmount;
-            }
-            if (data.eod.TotalDeposits !== undefined) {
-                totalDeposits = data.eod.TotalDeposits || 0;
-                document.getElementById('totalDeposits').innerHTML = '₱' + formatNumber(totalDeposits);
-            }
-            if (data.eod.TotalExpenses !== undefined) {
-                totalExpenses = data.eod.TotalExpenses || 0;
-                document.getElementById('totalExpenses').innerHTML = '₱' + formatNumber(totalExpenses);
             }
         } else {
             currentEodId = null;
             document.getElementById('eodStatus').className = 'badge-draft';
             document.getElementById('eodStatus').textContent = 'DRAFT';
             document.getElementById('eodNotes').value = '';
-            eodData = {};
         }
     }
     
@@ -1077,7 +1136,6 @@ async function loadEod() {
     updateSummary();
     showToast('Report loaded successfully', 'success');
 }
-
 // ============================================
 // SAVE EOD
 // ============================================
@@ -1085,26 +1143,34 @@ async function saveEod() {
     const date = document.getElementById('eodDate').value;
     const notes = document.getElementById('eodNotes').value;
     const sod = parseFloat(document.getElementById('sodAmount').value) || sodAmount || 0;
+    
     const denomData = {};
     document.querySelectorAll('#billsContainer .denom-item input, #coinsContainer .denom-item input').forEach(input => {
         const type = input.dataset.type;
         const denom = parseFloat(input.dataset.denom);
         const value = parseInt(input.value) || 0;
-        denomData[`${type}_${denom}`] = value;
+        if (value > 0) {
+            denomData[`${type}_${denom}`] = value;
+        }
     });
+    
     const payload = {
         date: date,
         eod_id: currentEodId,
         denominations: denomData,
         notes: notes,
-        status: 'draft',
-        payment_breakdown: paymentBreakdown,
+        payment_breakdown: {
+            cash: paymentBreakdown.cash || 0,
+            card: paymentBreakdown.card || 0,
+            gcash: paymentBreakdown.gcash || 0
+        },
         sod_amount: sod,
         total_deposits: totalDeposits,
         deposit_count: depositCount,
         total_expenses: totalExpenses,
         expense_count: expenseCount
     };
+    
     const result = await apiCall('saveEod', 'POST', payload);
     if (result.success) {
         currentEodId = result.eod_id;
@@ -1121,29 +1187,38 @@ async function saveEod() {
 // ============================================
 async function submitEod() {
     if (!confirm('Are you sure you want to submit this EOD report? This cannot be undone.')) return;
+    
     const date = document.getElementById('eodDate').value;
     const notes = document.getElementById('eodNotes').value;
     const sod = parseFloat(document.getElementById('sodAmount').value) || sodAmount || 0;
+    
     const denomData = {};
     document.querySelectorAll('#billsContainer .denom-item input, #coinsContainer .denom-item input').forEach(input => {
         const type = input.dataset.type;
         const denom = parseFloat(input.dataset.denom);
         const value = parseInt(input.value) || 0;
-        denomData[`${type}_${denom}`] = value;
+        if (value > 0) {
+            denomData[`${type}_${denom}`] = value;
+        }
     });
+    
     const payload = {
         date: date,
         eod_id: currentEodId,
         denominations: denomData,
         notes: notes,
-        status: 'submitted',
-        payment_breakdown: paymentBreakdown,
+        payment_breakdown: {
+            cash: paymentBreakdown.cash || 0,
+            card: paymentBreakdown.card || 0,
+            gcash: paymentBreakdown.gcash || 0
+        },
         sod_amount: sod,
         total_deposits: totalDeposits,
         deposit_count: depositCount,
         total_expenses: totalExpenses,
         expense_count: expenseCount
     };
+    
     const result = await apiCall('submitEod', 'POST', payload);
     if (result.success) {
         currentEodId = result.eod_id;
@@ -1160,7 +1235,7 @@ async function submitEod() {
 // ============================================
 async function loadHistory() {
     openHistory();
-    document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="10" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr>';
+    document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="12" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr>';
     const result = await apiCall('getHistory');
     const tbody = document.getElementById('historyTableBody');
     if (result.success && result.data && result.data.length > 0) {
@@ -1170,6 +1245,8 @@ async function loadHistory() {
                 <td>${row.ReportDate}</td>
                 <td>₱${formatNumber(row.TotalSales || 0)}</td>
                 <td>₱${formatNumber(row.CashReceived || 0)}</td>
+                <td>₱${formatNumber(row.GcashReceived || 0)}</td>
+                <td>₱${formatNumber(row.CardReceived || 0)}</td>
                 <td>₱${formatNumber(row.TotalDeposits || 0)}</td>
                 <td>₱${formatNumber(row.TotalExpenses || 0)}</td>
                 <td>₱${formatNumber(row.ExpectedCashOnHand || 0)}</td>
@@ -1180,7 +1257,7 @@ async function loadHistory() {
             </tr>`;
         }).join('');
     } else {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center">No history found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center">No history found</td></tr>';
     }
 }
 
@@ -1211,19 +1288,18 @@ function updatePrintArea() {
     const status = document.getElementById('eodStatus').textContent;
     const notes = document.getElementById('eodNotes').value;
     
-    // Header
     document.getElementById('printDate').textContent = formattedDate;
     document.getElementById('printStatus').textContent = status;
     
-    // Stats
     document.getElementById('printTotalSales').textContent = document.getElementById('totalSales').textContent;
     document.getElementById('printTransactionCount').textContent = document.getElementById('transactionCount').textContent;
     document.getElementById('printCashReceived').textContent = document.getElementById('cashReceived').textContent;
+    document.getElementById('printGcashReceived').textContent = document.getElementById('gcashReceived').textContent;
+    document.getElementById('printCardReceived').textContent = document.getElementById('cardReceived').textContent;
     document.getElementById('printTotalDeposits').textContent = document.getElementById('totalDeposits').textContent;
     document.getElementById('printTotalExpenses').textContent = document.getElementById('totalExpenses').textContent;
     document.getElementById('printExpectedCash').textContent = document.getElementById('expectedCash').textContent;
     
-    // Summary
     document.getElementById('printSummarySales').textContent = document.getElementById('summarySales').textContent;
     document.getElementById('printSummaryTransactions').textContent = document.getElementById('summaryTransactions').textContent;
     document.getElementById('printSummaryCash').textContent = document.getElementById('summaryCash').textContent;
@@ -1243,7 +1319,6 @@ function updatePrintArea() {
     const diffColor = document.getElementById('summaryDifference').style.color;
     document.getElementById('printSummaryDifference').style.color = diffColor || '#1a2a3a';
     
-    // Bills Table
     const billsTable = document.getElementById('printBillsTable');
     billsTable.innerHTML = '';
     let totalBills = 0;
@@ -1263,7 +1338,6 @@ function updatePrintArea() {
     });
     document.getElementById('printTotalBills').textContent = '₱' + formatNumber(totalBills);
     
-    // Coins Table
     const coinsTable = document.getElementById('printCoinsTable');
     coinsTable.innerHTML = '';
     let totalCoins = 0;

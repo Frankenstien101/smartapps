@@ -229,9 +229,8 @@
             </div>
         </a>
 
-
          <!-- ANUBIS -->
-        <a href="/asset" class="group">
+        <a href="https://asset.onebluesys.com/" class="group">
             <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
 
                 <div class="app-icon mb-8">
@@ -248,6 +247,23 @@
             </div>
         </a>
 
+         <!-- LOAD GUARD -->
+        <a href="/loadguard.php" class="group">
+            <div class="glass border border-zinc-800 rounded-3xl p-8 card-hover h-full flex flex-col">
+
+                <div class="app-icon mb-8">
+                    <img src="/img/loadguard2.png" alt="loadguard">
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-2 text-white">
+                    Load Guard
+                </h3>
+
+                <p class="text-zinc-400 flex-1">
+                    Device Tracking • Load Management
+                </p>
+            </div>
+        </a>
     </div>
 
     <!-- FOOTER -->

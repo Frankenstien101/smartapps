@@ -170,6 +170,7 @@
         background: #f8fafc;
         padding: 12px;
         font-weight: 600;
+        white-space: nowrap;
     }
     
     .table td {
@@ -216,6 +217,10 @@
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
+    
+    .text-success { color: #28a745; }
+    .text-danger { color: #dc3545; }
+    .text-muted { color: #6c7a91; }
     
     @media (max-width: 768px) {
         .stats-row {
@@ -335,7 +340,7 @@
                     </tr>
                 </thead>
                 <tbody id="reportTableBody">
-                    <tr><td colspan="2" class="text-center"><div class="loading-spinner"></div> Loading...<\/td><\/tr>
+                    <tr><td colspan="2" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -362,7 +367,6 @@ const API_URL = '/dmb/datafetcher/inventoryreportdata.php';
 
 let currentTab = 'summary';
 let inventoryData = [];
-
 
 // ============================================
 // API CALLS
@@ -445,7 +449,7 @@ async function loadProductDetails() {
 async function loadReport() {
     const tbody = document.getElementById('reportTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center"><div class="loading-spinner"></div> Loading...<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center"><div class="loading-spinner"></div> Loading...</td></tr>';
     }
     
     if (currentTab === 'summary') {
@@ -488,13 +492,13 @@ function displaySummaryTab() {
     const potentialProfit = document.getElementById('potentialProfit')?.innerText || '₱0';
     
     tbody.innerHTML = `
-        <tr><td><strong>Total Products</strong><\/td><td>${totalProducts}<\/td><\/tr>
-        <tr><td><strong>Total Units in Stock</strong><\/td><td>${totalUnits}<\/td><\/tr>
-        <tr><td><strong>Total Inventory Value</strong><\/td><td>${inventoryValue}<\/td><\/tr>
-        <tr><td><strong>Low Stock Items (&lt;10)</strong><\/td><td>${lowStockCount}<\/td><\/tr>
-        <tr><td><strong>Out of Stock Items</strong><\/td><td>${outOfStockCount}<\/td><\/tr>
-        <tr><td><strong>Well Stocked Items</strong><\/td><td>${wellStockedCount}<\/td><\/tr>
-        <tr><td><strong>Potential Profit</strong><\/td><td>${potentialProfit}<\/td><\/tr>
+        <tr><td><strong>Total Products</strong></td><td>${totalProducts}</td></tr>
+        <tr><td><strong>Total Units in Stock</strong></td><td>${totalUnits}</td></tr>
+        <tr><td><strong>Total Inventory Value</strong></td><td>${inventoryValue}</td></tr>
+        <tr><td><strong>Low Stock Items (&lt;10)</strong></td><td>${lowStockCount}</td></tr>
+        <tr><td><strong>Out of Stock Items</strong></td><td>${outOfStockCount}</td></tr>
+        <tr><td><strong>Well Stocked Items</strong></td><td>${wellStockedCount}</td></tr>
+        <tr><td><strong>Potential Profit</strong></td><td>${potentialProfit}</td></tr>
     `;
     
     const reportTitle = document.getElementById('reportTitle');
@@ -515,6 +519,8 @@ function displayLowStockReport(data, summary) {
             <th>Category</th>
             <th>Brand</th>
             <th>Current Stock</th>
+            <th>Original Price</th>
+            <th>Discount</th>
             <th>Selling Price</th>
             <th>Total Value</th>
             <th>Status</th>
@@ -522,24 +528,27 @@ function displayLowStockReport(data, summary) {
     `;
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No low stock products found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">No low stock products found</td></tr>';
         return;
     }
     
     tbody.innerHTML = data.map(product => {
         let statusClass = product.AvailableQuantity === 0 ? 'badge-out' : 'badge-low';
         let statusText = product.AvailableQuantity === 0 ? 'OUT OF STOCK' : 'LOW STOCK';
+        const discountedPrice = product.DiscountedPrice || product.SellingPrice;
         
         return `
             <tr>
-                <td>${product.ProductCode || 'N/A'}<\/td>
-                <td><strong>${escapeHtml(product.ProductName)}<\/strong><\/td>
-                <td>${product.Category || '-'}<\/td>
-                <td>${product.Brand || '-'}<\/td>
-                <td><span class="${statusClass}">${product.AvailableQuantity} units</span><\/td>
-                <td>₱${formatNumber(product.SellingPrice)}<\/td>
-                <td>₱${formatNumber(product.TotalValue)}<\/td>
-                <td><span class="${statusClass}">${statusText}</span><\/td>
+                <td>${product.ProductCode || 'N/A'}</td>
+                <td><strong>${escapeHtml(product.ProductName)}</strong></td>
+                <td>${product.Category || '-'}</td>
+                <td>${product.Brand || '-'}</td>
+                <td><span class="${statusClass}">${product.AvailableQuantity} units</span></td>
+                <td>₱${formatNumber(product.SellingPrice)}</td>
+                <td>₱${formatNumber(product.Discount || 0)}</td>
+                <td>₱${formatNumber(discountedPrice)}</td>
+                <td>₱${formatNumber(product.TotalValue)}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
             </tr>
         `;
     }).join('');
@@ -585,7 +594,7 @@ function displayCategoryReport(data, totalValue) {
     `;
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No category data available<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No category data available</td></tr>';
         return;
     }
     
@@ -593,13 +602,13 @@ function displayCategoryReport(data, totalValue) {
         const percentage = totalValue > 0 ? ((cat.TotalValue / totalValue) * 100).toFixed(2) : 0;
         return `
             <tr>
-                <td><strong>${cat.Category || 'Uncategorized'}</strong><\/td>
-                <td>${cat.ProductCount}<\/td>
-                <td>${cat.TotalUnits}<\/td>
-                <td>₱${formatNumber(cat.TotalValue)}<\/td>
-                <td>₱${formatNumber(cat.AveragePrice)}<\/td>
-                <td>${percentage}%<\/td>
-                <td>₱${formatNumber(cat.PotentialProfit)}<\/td>
+                <td><strong>${cat.Category || 'Uncategorized'}</strong></td>
+                <td>${cat.ProductCount}</td>
+                <td>${cat.TotalUnits}</td>
+                <td>₱${formatNumber(cat.TotalValue)}</td>
+                <td>₱${formatNumber(cat.AveragePrice)}</td>
+                <td>${percentage}%</td>
+                <td>₱${formatNumber(cat.PotentialProfit)}</td>
             </tr>
         `;
     }).join('');
@@ -644,7 +653,7 @@ function displayStockMovementReport(data, summary) {
     `;
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No stock movement data available<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No stock movement data available</td></tr>';
         return;
     }
     
@@ -652,12 +661,12 @@ function displayStockMovementReport(data, summary) {
         let netClass = item.NetChange >= 0 ? 'text-success' : 'text-danger';
         return `
             <tr>
-                <td><strong>${escapeHtml(item.ProductName)}<\/strong><\/td>
-                <td><span class="text-success">+${item.TotalStockIn || 0}</span><\/td>
-                <td><span class="text-danger">-${item.TotalStockOut || 0}</span><\/td>
-                <td><span class="${netClass}">${item.NetChange >= 0 ? '+' : ''}${item.NetChange || 0}</span><\/td>
-                <td>${item.TransactionCount || 0}<\/td>
-                <td>₱${formatNumber(item.TotalCostValue)}<\/td>
+                <td><strong>${escapeHtml(item.ProductName)}</strong></td>
+                <td><span class="text-success">+${item.TotalStockIn || 0}</span></td>
+                <td><span class="text-danger">-${item.TotalStockOut || 0}</span></td>
+                <td><span class="${netClass}">${item.NetChange >= 0 ? '+' : ''}${item.NetChange || 0}</span></td>
+                <td>${item.TransactionCount || 0}</td>
+                <td>₱${formatNumber(item.TotalCostValue)}</td>
             </tr>
         `;
     }).join('');
@@ -705,6 +714,8 @@ function displayProductDetails(data, summary) {
             <th>Brand</th>
             <th>Stock</th>
             <th>Cost Price</th>
+            <th>Original Price</th>
+            <th>Discount</th>
             <th>Selling Price</th>
             <th>Profit/Unit</th>
             <th>Total Value</th>
@@ -712,25 +723,28 @@ function displayProductDetails(data, summary) {
     `;
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No products found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">No products found</td></tr>';
         return;
     }
     
     tbody.innerHTML = data.map(product => {
         let stockClass = product.AvailableQuantity === 0 ? 'badge-out' : (product.AvailableQuantity < 10 ? 'badge-low' : 'badge-normal');
         let stockText = product.AvailableQuantity === 0 ? 'OUT' : (product.AvailableQuantity < 10 ? 'LOW' : 'OK');
+        const discountedPrice = product.DiscountedPrice || product.SellingPrice;
         
         return `
             <tr>
-                <td>${product.ProductCode || 'N/A'}<\/td>
-                <td><strong>${escapeHtml(product.ProductName)}<\/strong><\/td>
-                <td>${product.Category || '-'}<\/td>
-                <td>${product.Brand || '-'}<\/td>
-                <td><span class="${stockClass}">${product.AvailableQuantity} (${stockText})</span><\/td>
-                <td>₱${formatNumber(product.CostPrice)}<\/td>
-                <td>₱${formatNumber(product.SellingPrice)}<\/td>
-                <td>₱${formatNumber(product.ProfitPerUnit)}<\/td>
-                <td>₱${formatNumber(product.TotalValue)}<\/td>
+                <td>${product.ProductCode || 'N/A'}</td>
+                <td><strong>${escapeHtml(product.ProductName)}</strong></td>
+                <td>${product.Category || '-'}</td>
+                <td>${product.Brand || '-'}</td>
+                <td><span class="${stockClass}">${product.AvailableQuantity} (${stockText})</span></td>
+                <td>₱${formatNumber(product.CostPrice)}</td>
+                <td>₱${formatNumber(product.SellingPrice)}</td>
+                <td>₱${formatNumber(product.Discount || 0)}</td>
+                <td>₱${formatNumber(discountedPrice)}</td>
+                <td>₱${formatNumber(product.ProfitPerUnit)}</td>
+                <td>₱${formatNumber(product.TotalValue)}</td>
             </tr>
         `;
     }).join('');

@@ -18,7 +18,7 @@ try {
             SET CUSTOMER_NAME = ?, 
                 ADDRESS = ?, 
                 PHONE_NUMBER = ?, 
-                SELLER_ID = ?,
+                SELLER_ID = ?
             WHERE CUSTOMER_ID = ? AND SITE = ? AND PRINCIPAL = ?
         ");
         
