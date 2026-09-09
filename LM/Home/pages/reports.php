@@ -129,6 +129,16 @@
         </a>
       </div>
 
+
+       <div class="col-auto px-2">
+        <a href="portal.php?page=damagereport" class="card-link">
+          <div class="card-custom">
+            <img src="\LM\Home\img\transactions\dmg.png" class="card-icon mb-3 mt-3" alt="Resigned Report Icon" style="height:100px;"/>
+            <div class="card-title">DEVICE I.R COMPLIANCE</div>
+          </div>
+        </a>
+      </div>
+
     </div>
 </div>
 

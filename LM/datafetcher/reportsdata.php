@@ -100,6 +100,90 @@ if (isset($_GET['action']) && $_GET['action'] === 'devicechecking') {
 }
 
 
+// Add this to your reportsdata.php file
+
+if (isset($_GET['action']) && $_GET['action'] === 'get_device_by_serial') {
+    header('Content-Type: application/json');
+    
+    if (!$conn || !($conn instanceof PDO)) {
+        echo json_encode(['error' => 'Database connection failed']);
+        exit();
+    }
+
+    try {
+        $companyId = $_GET['company'] ?? $_SESSION['Company_ID'] ?? '';
+        $serial = $_GET['serial'] ?? '';
+
+        if (empty($companyId)) {
+            echo json_encode(['error' => 'Company ID is required']);
+            exit();
+        }
+
+        if (empty($serial)) {
+            echo json_encode(['error' => 'Serial number is required']);
+            exit();
+        }
+
+        $sql = "SELECT
+            LINEID,
+            COMPANY_ID,
+            SITE_ID,
+            DEPARTMENT,
+            PRINCIPAL,
+            POSITION,
+            BRAND,
+            MODEL,
+            IMEI,
+            SERIAL,
+            DATE_DEPLOYED,
+            PERSON_USING,
+            NUMBER,
+            BALANCE,
+            CONSUMED,
+            REMARKS,
+            LAST_LOAD_HISTORY,
+            LOAD_STATUS,
+            LOAD_TERMS,
+            DATA_BALANCE_MIN,
+            DEVICE_STATUS,
+            REASON_CODE,
+            DATE_SURRENDERED,
+            DAYS_TO_REPAIR,
+            TEMPORARY_DEVICE,
+            IT_RECOMMENDATION,
+            CHARGED_TO,
+            STATUS,
+            IS_COMPLIED,
+            DATE_COMPLIED,
+            DATEADD(MONTH, LOAD_TERMS, LAST_LOAD_HISTORY) AS NEXT_LOAD_SCHEDULE,
+            DATEDIFF(DAY, CAST(GETDATE() AS DATE), DATEADD(MONTH, LOAD_TERMS, LAST_LOAD_HISTORY)) AS DAYS_LEFT,
+            PERSON_IMAGE
+        FROM dbo.BS_Device
+        WHERE COMPANY_ID = :companyid
+          AND SERIAL = :serial
+          AND STATUS IN ('ACTIVE', 'IN USE')";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':companyid', $companyId);
+        $stmt->bindParam(':serial', $serial);
+        $stmt->execute();
+
+        $device = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($device) {
+            echo json_encode(['success' => true, 'device' => $device]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Device not found']);
+        }
+        
+    } catch (PDOException $e) {
+        echo json_encode(['error' => 'Database error', 'message' => $e->getMessage()]);
+    } catch (Exception $e) {
+        echo json_encode(['error' => 'Application error', 'message' => $e->getMessage()]);
+    }
+    exit();
+}
+
 
 if (isset($_GET['action']) && $_GET['action'] === 'purchasedhistory') {
     header('Content-Type: application/json');

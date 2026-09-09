@@ -1,5 +1,7 @@
 <?php
 // api_expenses.php - Expenses Management API
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -14,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-include '../DB/dbcon.php';
+// dbcon.php prints connection failures. Capture that output so it cannot
+// corrupt the JSON response, and handle initialization inside the API catch.
 
 // Start session for user tracking
 session_start();
@@ -28,6 +31,21 @@ $action = $_GET['action'] ?? '';
 // API ROUTES
 // ============================================
 try {
+    ob_start();
+    try {
+        require __DIR__ . '/../DB/dbcon.php';
+    } finally {
+        $connectionOutput = ob_get_clean();
+    }
+    if (!isset($conn) || !($conn instanceof PDO)) {
+        error_log('Expenses connection error: ' . trim($connectionOutput));
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Unable to connect to the expense database. Please check the database connection and SQL Server driver on the server.'
+        ]);
+        return;
+    }
     switch ($method) {
         case 'GET':
             handleGetRequest($conn, $action);
@@ -46,7 +64,13 @@ try {
             break;
     }
 } catch (PDOException $e) {
-    echo json_encode(['error' => 'Database error', 'message' => $e->getMessage()]);
+    http_response_code(500);
+    error_log('Expenses database error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Database error', 'message' => $e->getMessage()], JSON_INVALID_UTF8_SUBSTITUTE);
+} catch (Throwable $e) {
+    http_response_code(500);
+    error_log('Expenses API error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Unable to process the expense request. Please check the server error log.']);
 }
 
 // ============================================
@@ -410,12 +434,7 @@ function updateExpense($conn, $data, $currentUser) {
     
     $stmt = $conn->prepare($query);
     
-    // Bind parameters
-    for ($i = 0; $i < count($params); $i++) {
-        $stmt->bindParam($i + 1, $params[$i]);
-    }
-    
-    if ($stmt->execute()) {
+    if ($stmt->execute($params)) {
         error_log("Update successful for ID: " . $expenseId);
         echo json_encode([
             'success' => true,

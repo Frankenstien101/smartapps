@@ -31,10 +31,16 @@ try {
                 BALANCE,
                 LOAD_STATUS,
                 LAST_LOAD_HISTORY,
-                IS_COMPLIED
+                IS_COMPLIED,
+                CASE
+                    WHEN BALANCE < COALESCE(DATA_BALANCE_MIN, 0) THEN 'FOR LOAD'
+                    WHEN LAST_LOAD_HISTORY IS NULL THEN 'FOR LOAD'
+                    WHEN LAST_LOAD_HISTORY < DATEADD(MONTH, -10, GETDATE()) THEN 'FOR LOAD'
+                    WHEN LAST_LOAD_HISTORY < DATEADD(MONTH, -CAST(COALESCE(LOAD_TERMS, 0) AS INT), GETDATE()) THEN 'FOR LOAD'
+                    ELSE 'OK'
+                END AS EFFECTIVE_LOAD_STATUS
             FROM BS_Device
             WHERE COMPANY_ID = :company_id
-            AND LOAD_STATUS = 'FOR LOAD'
             ORDER BY DATE_ADDED DESC
         ";
 
@@ -43,7 +49,17 @@ try {
             ':company_id' => $company_id
         ]);
 
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $devices = array_values(array_filter($devices, function ($device) {
+            return ($device['EFFECTIVE_LOAD_STATUS'] ?? 'OK') === 'FOR LOAD';
+        }));
+
+        foreach ($devices as &$device) {
+            $device['LOAD_STATUS'] = $device['EFFECTIVE_LOAD_STATUS'] ?? $device['LOAD_STATUS'];
+        }
+        unset($device);
+
+        echo json_encode($devices);
         exit;
     }
 

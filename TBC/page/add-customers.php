@@ -13,6 +13,8 @@ require_once __DIR__ . '/../DB/dbcon.php';
 
 $message = '';
 $messageType = '';
+$selectedSite = $_SESSION['SITE'] ?? '';
+$selectedPrincipal = $_SESSION['PRINCIPAL'] ?? '';
 
 // ============================================
 // SAVE CUSTOMER
@@ -50,8 +52,8 @@ if (isset($_POST['save_customer'])) {
         $stmt = $conn->prepare($sql);
 
         $stmt->execute([
-            ':site' => $_POST['site'],
-            ':principal' => $_POST['principal'],
+            ':site' => $selectedSite,
+            ':principal' => $selectedPrincipal,
             ':seller_id' => $_POST['seller_id'],
             ':seller_name' => $_POST['seller_name'],
             ':customer_id' => $_POST['customer_id'],
@@ -327,6 +329,8 @@ if (isset($_POST['upload_excel'])) {
                             type="text"
                             name="site"
                             class="form-control"
+                            value="<?= htmlspecialchars($selectedSite, ENT_QUOTES, 'UTF-8') ?>"
+                            
                             required
                         >
 
@@ -342,6 +346,8 @@ if (isset($_POST['upload_excel'])) {
                             type="text"
                             name="principal"
                             class="form-control"
+                            value="<?= htmlspecialchars($selectedPrincipal, ENT_QUOTES, 'UTF-8') ?>"
+                            
                         >
 
                     </div>

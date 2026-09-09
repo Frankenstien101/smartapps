@@ -1,0 +1,739 @@
+<?php
+// installmentdata.php - Backend API for Installment/Loan Management
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+include '../DB/dbcon.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// ============================================
+// DATABASE CONNECTION
+// ============================================
+//try {
+//    $conn = new PDO(
+//        "sqlsrv:Server=172.40.0.81;Database=SIDJAN",
+//        "sa",
+//        'bspi.@dm1n'
+//    );
+//    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+//    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+//} catch (PDOException $e) {
+//    echo json_encode(['success' => false, 'error' => 'Database connection failed', 'message' => $e->getMessage()]);
+//    exit();
+//}
+
+$method = $_SERVER['REQUEST_METHOD'];
+$action = $_GET['action'] ?? '';
+
+session_start();
+$currentUser = $_SESSION['username'] ?? $_SESSION['NAME'] ?? 'system';
+$currentBranch = $_SESSION['branch_name'] ?? $_SESSION['branch'] ?? 'Main Branch';
+
+try {
+    switch ($method) {
+        case 'GET':
+            handleGetRequest($conn, $action);
+            break;
+        case 'POST':
+            handlePostRequest($conn, $action, $currentUser);
+            break;
+        default:
+            echo json_encode(['success' => false, 'error' => 'Invalid request method']);
+            break;
+    }
+} catch (PDOException $e) {
+    echo json_encode(['success' => false, 'error' => 'Database error', 'message' => $e->getMessage()]);
+}
+
+function handleGetRequest($conn, $action) {
+    global $currentBranch;
+    
+    switch ($action) {
+        case 'getProducts':
+            getProducts($conn, $currentBranch);
+            break;
+        case 'getInstallments':
+            getInstallments($conn, $currentBranch);
+            break;
+        case 'getInstallmentById':
+            getInstallmentById($conn, $currentBranch);
+            break;
+        case 'getInstallmentStats':
+            getInstallmentStats($conn, $currentBranch);
+            break;
+        default:
+            echo json_encode(['success' => false, 'error' => 'Invalid action: ' . $action]);
+    }
+}
+
+function handlePostRequest($conn, $action, $currentUser) {
+    global $currentBranch;
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    switch ($action) {
+        case 'createInstallment':
+            createInstallment($conn, $data, $currentUser, $currentBranch);
+            break;
+        case 'recordPayment':
+            recordPayment($conn, $data, $currentUser, $currentBranch);
+            break;
+        default:
+            echo json_encode(['success' => false, 'error' => 'Invalid action: ' . $action]);
+    }
+}
+
+// ============================================
+// GET PRODUCTS WITH AVAILABLE STOCK/UNITS
+// ============================================
+
+function getProducts($conn, $currentBranch) {
+    $query = "SELECT 
+                p.ProductID, 
+                p.ProductCode, 
+                p.ProductName, 
+                p.Category, 
+                p.Brand, 
+                p.AvailableQuantity,
+                p.SellingPrice,
+                p.ProductImagePath
+              FROM Products p
+              WHERE p.Branch = :branch
+              ORDER BY p.ProductName";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->execute([':branch' => $currentBranch]);
+    $products = $stmt->fetchAll();
+    
+    $result = [];
+    foreach ($products as $product) {
+        // Get ONLY available units (not on_installment, not sold, not transferred)
+        $unitQuery = "SELECT COUNT(*) as unit_count 
+                      FROM ProductUnits 
+                      WHERE ProductID = :pid 
+                        AND Branch = :branch 
+                        AND Status = 'available'";
+        $unitStmt = $conn->prepare($unitQuery);
+        $unitStmt->execute([
+            ':pid' => $product['ProductID'],
+            ':branch' => $currentBranch
+        ]);
+        $unitCount = $unitStmt->fetch();
+        
+        $availableUnits = intval($unitCount['unit_count']);
+        $bulkStock = intval($product['AvailableQuantity'] ?? 0);
+        
+        // IMPORTANT: Use availableUnits count for stock if product has units
+        // If product has units, ignore bulk stock count
+        if ($availableUnits > 0) {
+            // Product has serialized units available
+            $product['HasUnits'] = true;
+            $product['AvailableQuantity'] = $availableUnits;
+            $result[] = $product;
+        } elseif ($bulkStock > 0 && $availableUnits == 0) {
+            // Bulk product with no units
+            $product['HasUnits'] = false;
+            $result[] = $product;
+        }
+        // If both are 0, don't add to result
+    }
+    
+    echo json_encode(['success' => true, 'data' => $result, 'count' => count($result)]);
+}
+
+// ============================================
+// CREATE INSTALLMENT
+// ============================================
+
+function createInstallment($conn, $data, $currentUser, $currentBranch) {
+    $customerName = trim($data['customer_name'] ?? '');
+    $customerPhone = $data['customer_phone'] ?? '';
+    $customerAddress = $data['customer_address'] ?? '';
+    $products = $data['products'] ?? [];
+    $totalProductPrice = floatval($data['total_product_price'] ?? 0);
+    $downPayment = floatval($data['down_payment'] ?? 0);
+    $interestRate = floatval($data['interest_rate'] ?? 0);
+    $penaltyRate = floatval($data['penalty_rate'] ?? 0);
+    $months = intval($data['months'] ?? 0);
+    $notes = $data['notes'] ?? '';
+    
+    if (empty($customerName)) {
+        echo json_encode(['success' => false, 'message' => 'Customer name is required']);
+        return;
+    }
+    
+    if (empty($products)) {
+        echo json_encode(['success' => false, 'message' => 'At least one product is required']);
+        return;
+    }
+    
+    if ($months <= 0 || $months > 36) {
+        echo json_encode(['success' => false, 'message' => 'Invalid number of months (1-36 months)']);
+        return;
+    }
+    
+    $loanAmount = $totalProductPrice - $downPayment;
+    $totalInterest = $loanAmount * ($interestRate / 100);
+    $totalAmount = $loanAmount + $totalInterest;
+    $monthlyPayment = $totalAmount / $months;
+    
+    $productNames = [];
+    foreach ($products as $p) {
+        $productNames[] = $p['product_name'] . ' (x' . $p['quantity'] . ')';
+    }
+    $productList = implode(', ', $productNames);
+    
+    $installmentNo = 'INST-' . date('Ymd') . '-' . rand(1000, 9999);
+    
+    $conn->beginTransaction();
+    
+    try {
+        $query = "INSERT INTO Installments 
+                  (InstallmentNo, CustomerName, CustomerPhone, CustomerAddress, 
+                   ProductName, ProductPrice, DownPayment, LoanAmount,
+                   InterestRate, PenaltyRate, TotalInterest, TotalAmount, Months, MonthlyPayment,
+                   PaidAmount, RemainingBalance, Status, StartDate, NextPaymentDate, Notes, 
+                   CreatedBy, CreatedAt, Branch)
+                  VALUES 
+                  (?, ?, ?, ?,
+                   ?, ?, ?, ?,
+                   ?, ?, ?, ?, ?, ?,
+                   0, ?, 'active', GETDATE(), DATEADD(MONTH, 1, GETDATE()), ?, 
+                   ?, GETDATE(), ?)";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->execute([
+            $installmentNo,
+            $customerName,
+            $customerPhone,
+            $customerAddress,
+            $productList,
+            $totalProductPrice,
+            $downPayment,
+            $loanAmount,
+            $interestRate,
+            $penaltyRate,
+            $totalInterest,
+            $totalAmount,
+            $months,
+            $monthlyPayment,
+            $totalAmount,
+            $notes,
+            $currentUser,
+            $currentBranch
+        ]);
+        
+        $installmentId = $conn->lastInsertId();
+        
+        // Create payment schedule
+        $paymentDate = new DateTime();
+        $paymentDate->modify('+1 month');
+        
+        $scheduleQuery = "INSERT INTO InstallmentPayments 
+                         (InstallmentID, PaymentNo, DueDate, Amount, PenaltyAmount, Status, CreatedAt, Branch)
+                         VALUES 
+                         (?, ?, ?, ?, 0, 'pending', GETDATE(), ?)";
+        
+        $scheduleStmt = $conn->prepare($scheduleQuery);
+        
+        for ($i = 1; $i <= $months; $i++) {
+            $dueDate = clone $paymentDate;
+            $dueDate->modify('+' . ($i - 1) . ' months');
+            
+            $scheduleStmt->execute([
+                $installmentId,
+                $i,
+                $dueDate->format('Y-m-d'),
+                $monthlyPayment,
+                $currentBranch
+            ]);
+        }
+        
+        // Process products and update stock
+        foreach ($products as $product) {
+            $isSerialized = !empty($product['unit_id']) && $product['unit_id'] > 0;
+            
+            if ($isSerialized) {
+                // SERIALIZED ITEM
+                $unitId = $product['unit_id'];
+                
+                // Get unit details
+                $getUnitQuery = "SELECT UnitNumber, IMEINumber, SerialNumber 
+                                FROM ProductUnits 
+                                WHERE UnitID = ? AND Branch = ?";
+                $stmt = $conn->prepare($getUnitQuery);
+                $stmt->execute([$unitId, $currentBranch]);
+                $unitData = $stmt->fetch();
+                
+                $unitNumber = $unitData['UnitNumber'] ?? '';
+                $imei = $unitData['IMEINumber'] ?? '';
+                $serial = $unitData['SerialNumber'] ?? '';
+                
+                // Mark unit as on_installment
+                $updateUnitQuery = "UPDATE ProductUnits 
+                                   SET Status = 'on_installment', 
+                                       SoldTo = ?,
+                                       SoldBy = ?,
+                                       Notes = ?
+                                   WHERE UnitID = ? AND Status = 'available'";
+                
+                $stmt = $conn->prepare($updateUnitQuery);
+                $stmt->execute([
+                    $customerName,
+                    $currentUser,
+                    "Installment sale - {$installmentNo}",
+                    $unitId
+                ]);
+                
+                // Update product stock
+                $updateStockQuery = "UPDATE Products 
+                                    SET AvailableQuantity = AvailableQuantity - 1,
+                                        SoldQuantity = ISNULL(SoldQuantity, 0) + 1
+                                    WHERE ProductID = ? AND Branch = ?";
+                $stmt = $conn->prepare($updateStockQuery);
+                $stmt->execute([
+                    $product['product_id'],
+                    $currentBranch
+                ]);
+                
+                // Log stock history
+                $logQuery = "INSERT INTO StockInHistory 
+                            (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                             CostPrice, TotalCost, Notes, TransactionDate, AddedBy, Branch)
+                            SELECT 
+                                ?, ?, -1, AvailableQuantity + 1, AvailableQuantity,
+                                CostPrice, CostPrice, ?, GETDATE(), ?, ?
+                            FROM Products 
+                            WHERE ProductID = ? AND Branch = ?";
+                
+                $stmt = $conn->prepare($logQuery);
+                $stmt->execute([
+                    $product['product_id'],
+                    $product['product_name'],
+                    "Installment Sale - Unit #{$unitNumber} - {$installmentNo}",
+                    $currentUser,
+                    $currentBranch,
+                    $product['product_id'],
+                    $currentBranch
+                ]);
+                
+           } else {
+    // BULK ITEM
+    $quantity = intval($product['quantity']);
+    
+    // Get current stock before update
+    $getStockQuery = "SELECT AvailableQuantity, CostPrice FROM Products WHERE ProductID = ? AND Branch = ?";
+    $stmt = $conn->prepare($getStockQuery);
+    $stmt->execute([$product['product_id'], $currentBranch]);
+    $currentProduct = $stmt->fetch();
+    
+    $oldStock = $currentProduct['AvailableQuantity'];
+    $newStock = $oldStock - $quantity;
+    $costPrice = $currentProduct['CostPrice'];
+    $totalCost = $costPrice * $quantity;
+    
+    // Update product stock
+    $updateStockQuery = "UPDATE Products 
+                        SET AvailableQuantity = ?,
+                            SoldQuantity = ISNULL(SoldQuantity, 0) + ?
+                        WHERE ProductID = ? AND Branch = ?";
+    $stmt = $conn->prepare($updateStockQuery);
+    $stmt->execute([
+        $newStock,
+        $quantity,
+        $product['product_id'],
+        $currentBranch
+    ]);
+    
+    // Log stock history - SIMPLIFIED VERSION
+    $logQuery = "INSERT INTO StockInHistory 
+                (ProductID, ProductName, QuantityAdded, OldStock, NewStock, 
+                 CostPrice, TotalCost, Notes, TransactionDate, AddedBy, Branch)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)";
+    
+    $stmt = $conn->prepare($logQuery);
+    $stmt->execute([
+        $product['product_id'],
+        $product['product_name'],
+        -$quantity,  // Negative for stock out
+        $oldStock,
+        $newStock,
+        $costPrice,
+        $totalCost,
+        "Installment Sale (Bulk) - {$installmentNo}",
+        $currentUser,
+        $currentBranch
+    ]);
+}
+        }
+        
+        $conn->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Installment created successfully',
+            'installment_id' => $installmentId,
+            'installment_no' => $installmentNo,
+            'monthly_payment' => $monthlyPayment,
+            'total_amount' => $totalAmount,
+            'months' => $months,
+            'penalty_rate' => $penaltyRate
+        ]);
+        
+    } catch (Exception $e) {
+        $conn->rollBack();
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+}
+
+// ============================================
+// GET INSTALLMENTS LIST
+// ============================================
+
+function getInstallments($conn, $currentBranch) {
+    $limit = intval($_GET['limit'] ?? 100);
+    $status = $_GET['status'] ?? 'all';
+    
+    $statusFilter = "";
+    if ($status !== 'all') {
+        $statusFilter = "AND i.Status = :status";
+    }
+    
+    $query = "SELECT TOP $limit 
+                i.InstallmentID, 
+                i.InstallmentNo, 
+                i.CustomerName, 
+                i.CustomerPhone,
+                i.ProductName, 
+                i.ProductPrice, 
+                i.DownPayment, 
+                i.TotalAmount, 
+                i.Months, 
+                i.MonthlyPayment,
+                ISNULL(i.PaidAmount, 0) AS PaidAmount, 
+                ISNULL(i.RemainingBalance, i.TotalAmount) AS RemainingBalance,
+                i.Status,
+                FORMAT(i.StartDate, 'yyyy-MM-dd') AS StartDate,
+                FORMAT(i.NextPaymentDate, 'yyyy-MM-dd') AS NextPaymentDate,
+                i.Branch
+              FROM Installments i
+              WHERE i.Branch = :branch $statusFilter
+              ORDER BY i.InstallmentID DESC";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->bindParam(':branch', $currentBranch);
+    if ($status !== 'all') {
+        $stmt->bindParam(':status', $status);
+    }
+    $stmt->execute();
+    $installments = $stmt->fetchAll();
+    
+    foreach ($installments as &$inst) {
+        if ($inst['Status'] !== 'returned' && $inst['Status'] !== 'completed') {
+            if ($inst['RemainingBalance'] <= 0.01) {
+                $inst['Status'] = 'completed';
+            }
+        }
+    }
+    
+    echo json_encode(['success' => true, 'data' => $installments, 'count' => count($installments)]);
+}
+
+// ============================================
+// GET INSTALLMENT BY ID
+// ============================================
+
+function getInstallmentById($conn, $currentBranch) {
+    $id = $_GET['id'] ?? 0;
+    
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'Installment ID required']);
+        return;
+    }
+    
+    $query = "SELECT 
+                i.InstallmentID, 
+                i.InstallmentNo, 
+                i.CustomerName, 
+                i.CustomerPhone, 
+                i.CustomerAddress,
+                i.ProductName, 
+                i.ProductPrice, 
+                i.DownPayment, 
+                i.LoanAmount,
+                i.InterestRate, 
+                i.PenaltyRate,
+                i.TotalInterest, 
+                i.TotalAmount, 
+                i.Months, 
+                i.MonthlyPayment,
+                ISNULL(i.PaidAmount, 0) AS PaidAmount, 
+                ISNULL(i.RemainingBalance, i.TotalAmount) AS RemainingBalance,
+                ISNULL(i.CreditBalance, 0) AS CreditBalance,   -- ← Added
+                i.Status,
+                FORMAT(i.StartDate, 'yyyy-MM-dd') AS StartDate,
+                FORMAT(i.NextPaymentDate, 'yyyy-MM-dd') AS NextPaymentDate,
+                i.Notes, 
+                i.CreatedBy, 
+                FORMAT(i.CreatedAt, 'yyyy-MM-dd HH:mm') AS CreatedAt,
+                i.Branch
+                
+              FROM Installments i
+              WHERE i.InstallmentID = :id AND i.Branch = :branch";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->execute([':id' => $id, ':branch' => $currentBranch]);
+    $installment = $stmt->fetch();
+    
+    if ($installment) {
+        $scheduleQuery = "SELECT 
+                            PaymentNo, 
+                            FORMAT(DueDate, 'yyyy-MM-dd') AS DueDate,
+                            Amount, 
+                            Status,
+                            FORMAT(PaymentDate, 'yyyy-MM-dd HH:mm') AS PaymentDate,
+                            ReferenceNo, 
+                            Notes,
+                            ISNULL(PenaltyPaid, 0) AS PenaltyPaid,
+                            ISNULL(CreditUsed, 0) AS CreditUsed,           -- ← Added
+                            ISNULL(ExcessToWallet, 0) AS ExcessToWallet    -- ← Added
+                          FROM InstallmentPayments
+                          WHERE InstallmentID = :id
+                          ORDER BY PaymentNo";
+        
+        $stmt = $conn->prepare($scheduleQuery);
+        $stmt->execute([':id' => $id]);
+        $payments = $stmt->fetchAll();
+        
+        echo json_encode([
+            'success' => true, 
+            'data' => $installment, 
+            'payments' => $payments
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Installment not found']);
+    }
+}
+
+// ============================================
+// GET INSTALLMENT STATS
+// ============================================
+
+function getInstallmentStats($conn, $currentBranch) {
+    $query = "SELECT 
+                COUNT(*) AS TotalInstallments,
+                SUM(CASE WHEN Status = 'active' AND Status != 'returned' THEN 1 ELSE 0 END) AS ActiveInstallments,
+                SUM(CASE WHEN Status = 'completed' THEN 1 ELSE 0 END) AS CompletedInstallments,
+                SUM(CASE WHEN Status = 'overdue' AND Status != 'returned' THEN 1 ELSE 0 END) AS OverdueInstallments,
+                SUM(CASE WHEN Status = 'returned' THEN 1 ELSE 0 END) AS ReturnedInstallments,
+                ISNULL(SUM(CASE WHEN Status != 'returned' THEN TotalAmount ELSE 0 END), 0) AS TotalLoanAmount,
+                ISNULL(SUM(CASE WHEN Status != 'returned' THEN PaidAmount ELSE 0 END), 0) AS TotalPaidAmount
+              FROM Installments
+              WHERE Branch = :branch AND Status IS NOT NULL";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->execute([':branch' => $currentBranch]);
+    $stats = $stmt->fetch();
+    
+    // Count overdue
+    $overdueQuery = "SELECT COUNT(*) AS OverdueCount 
+                     FROM Installments 
+                     WHERE Status = 'active' AND NextPaymentDate < GETDATE() 
+                     AND Status != 'returned' AND Branch = :branch";
+    $stmt = $conn->prepare($overdueQuery);
+    $stmt->execute([':branch' => $currentBranch]);
+    $overdue = $stmt->fetch();
+    
+    $stats['OverdueCount'] = $overdue['OverdueCount'] ?? 0;
+    
+    echo json_encode(['success' => true, 'data' => $stats]);
+}
+
+// ============================================
+// RECORD PAYMENT
+// ============================================
+
+function recordPayment($conn, $data, $currentUser, $currentBranch) {
+    $installmentId     = (int)($data['installment_id'] ?? 0);
+    $paymentNo         = (int)($data['payment_no'] ?? 0);
+    $amountReceivedStr = str_replace([',', '₱', ' '], '', trim($data['amount'] ?? '0'));
+    $amountReceived    = floatval($amountReceivedStr);
+    
+    $penaltyPaidStr    = str_replace([',', '₱', ' '], '', trim($data['penalty_paid'] ?? '0'));
+    $penaltyPaidInput  = floatval($penaltyPaidStr);
+    
+    $paymentMethod = $data['payment_method'] ?? 'cash';
+    $referenceNo   = $data['reference_no'] ?? '';
+    $notes         = $data['notes'] ?? '';
+    $useCredit     = filter_var($data['use_credit_balance'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+    if (!$installmentId || !$paymentNo) {
+        echo json_encode(['success' => false, 'message' => 'Installment ID and payment number required']);
+        return;
+    }
+
+    $conn->beginTransaction();
+
+    try {
+        $getDataQuery = "SELECT ip.*, i.PenaltyRate, ISNULL(i.CreditBalance, 0) AS CreditBalance, 
+                                i.TotalAmount, i.PaidAmount 
+                         FROM InstallmentPayments ip
+                         JOIN Installments i ON ip.InstallmentID = i.InstallmentID
+                         WHERE ip.InstallmentID = :id AND ip.PaymentNo = :no";
+        $stmt = $conn->prepare($getDataQuery);
+        $stmt->execute([':id' => $installmentId, ':no' => $paymentNo]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$payment) throw new Exception('Payment record not found');
+        if ($payment['Status'] === 'paid') throw new Exception('Payment already recorded');
+
+        // Calculate penalty
+        $dueDate = new DateTime($payment['DueDate']);
+        $today = new DateTime();
+        $daysOverdue = ($today > $dueDate) ? (int)$dueDate->diff($today)->days : 0;
+        $calculatedPenalty = ($daysOverdue > 0) 
+            ? round($payment['Amount'] * ($payment['PenaltyRate'] / 100) * ceil($daysOverdue / 30), 2) 
+            : 0.00;
+
+        $totalDue = round($payment['Amount'] + $calculatedPenalty, 2);
+        $currentCredit = round(floatval($payment['CreditBalance']), 2);
+
+        $creditUsed = 0.00;
+        $excessAmount = 0.00;
+
+        if ($useCredit && $currentCredit > 0) {
+            $creditUsed = min($currentCredit, $totalDue);
+        }
+
+        $effectiveDue = round($totalDue - $creditUsed, 2);
+
+        if ($amountReceived > $effectiveDue) {
+            $excessAmount = round($amountReceived - $effectiveDue, 2);
+        }
+
+        $actualAmountApplied = round(min($amountReceived + $creditUsed, $totalDue), 2);
+        $actualPenaltyPaid = round(min($calculatedPenalty, max(0, $actualAmountApplied - $payment['Amount'])), 2);
+
+        // === CRITICAL FIX: Final Payment Adjustment ===
+        $remainingAfterThis = round(floatval($payment['TotalAmount']) - floatval($payment['PaidAmount']) - $actualAmountApplied, 2);
+        
+        // If this is the last payment and there's a tiny balance (≤ 1.00), clear it
+        if ($remainingAfterThis > 0 && $remainingAfterThis <= 1.00) {
+            $actualAmountApplied += $remainingAfterThis;   // Absorb the small difference
+            $excessAmount = round($excessAmount - $remainingAfterThis, 2); // Adjust excess if needed
+            if ($excessAmount < 0) $excessAmount = 0;
+        }
+
+        // Update Payment
+        $updatePaymentSQL = "UPDATE InstallmentPayments 
+                             SET PaidAmount = :paid_amount,
+                                 Status = 'paid',
+                                 PaymentDate = GETDATE(),
+                                 ReferenceNo = :ref,
+                                 Notes = :notes,
+                                 PenaltyAmount = :penalty_amount,
+                                 PenaltyPaid = :penalty_paid,
+                                 DaysOverdue = :days_overdue,
+                                 CreditUsed = :credit_used,
+                                 ExcessToWallet = :excess
+                             WHERE InstallmentID = :id AND PaymentNo = :no";
+
+        $stmt = $conn->prepare($updatePaymentSQL);
+        $stmt->execute([
+            ':paid_amount'    => (float)$payment['Amount'],
+            ':ref'            => $referenceNo,
+            ':notes'          => $notes,
+            ':penalty_amount' => (float)$calculatedPenalty,
+            ':penalty_paid'   => (float)$actualPenaltyPaid,
+            ':days_overdue'   => $daysOverdue,
+            ':credit_used'    => (float)$creditUsed,
+            ':excess'         => (float)$excessAmount,
+            ':id'             => $installmentId,
+            ':no'             => $paymentNo
+        ]);
+
+        // Update Installment with rounding fix
+        $newPaidAmount    = round(floatval($payment['PaidAmount']) + $actualAmountApplied, 2);
+        $newRemaining     = round(max(0, floatval($payment['TotalAmount']) - $newPaidAmount), 2);
+        $newCreditBalance = round(floatval($payment['CreditBalance']) - $creditUsed + $excessAmount, 2);
+        $newPenaltyTotal  = round(floatval($payment['TotalPenaltyPaid'] ?? 0) + $actualPenaltyPaid, 2);
+
+        // Force zero if very small
+        if ($newRemaining <= 0.02) {
+            $newRemaining = 0.00;
+        }
+
+        // Status
+        $pendingStmt = $conn->prepare("SELECT COUNT(*) as cnt FROM InstallmentPayments WHERE InstallmentID = :id AND Status = 'pending'");
+        $pendingStmt->execute([':id' => $installmentId]);
+        $hasPending = (int)$pendingStmt->fetch()['cnt'] > 0;
+
+        $newStatus = ($newRemaining <= 0.01 || !$hasPending) ? 'completed' : 'active';
+
+        if ($newStatus === 'active') {
+            $overdueStmt = $conn->prepare("SELECT COUNT(*) as cnt FROM InstallmentPayments 
+                                          WHERE InstallmentID = :id AND Status = 'pending' AND DueDate < GETDATE()");
+            $overdueStmt->execute([':id' => $installmentId]);
+            if ((int)$overdueStmt->fetch()['cnt'] > 0) $newStatus = 'overdue';
+        }
+
+        $updateInstSQL = "UPDATE Installments 
+                          SET PaidAmount = :paid, 
+                              RemainingBalance = :remaining, 
+                              Status = :status, 
+                              TotalPenaltyPaid = :total_penalty,
+                              CreditBalance = :credit_balance,
+                              UpdatedAt = GETDATE()
+                          WHERE InstallmentID = :id";
+
+        $stmt = $conn->prepare($updateInstSQL);
+        $stmt->execute([
+            ':paid'          => $newPaidAmount,
+            ':remaining'     => $newRemaining,
+            ':status'        => $newStatus,
+            ':total_penalty' => $newPenaltyTotal,
+            ':credit_balance'=> $newCreditBalance,
+            ':id'            => $installmentId
+        ]);
+
+        // Next payment date handling...
+        if ($newStatus !== 'completed') {
+            $nextStmt = $conn->prepare("SELECT TOP 1 DueDate FROM InstallmentPayments 
+                                        WHERE InstallmentID = :id AND Status = 'pending' ORDER BY PaymentNo");
+            $nextStmt->execute([':id' => $installmentId]);
+            if ($next = $nextStmt->fetch()) {
+                $conn->prepare("UPDATE Installments SET NextPaymentDate = :dt WHERE InstallmentID = :id")
+                     ->execute([':dt' => $next['DueDate'], ':id' => $installmentId]);
+            }
+        } else {
+            $conn->prepare("UPDATE Installments SET CompletedDate = GETDATE(), NextPaymentDate = NULL WHERE InstallmentID = :id")
+                 ->execute([':id' => $installmentId]);
+        }
+
+        $conn->commit();
+
+        $message = "Payment recorded successfully.";
+        if ($creditUsed > 0) $message .= " Used ₱" . number_format($creditUsed, 2) . " credit.";
+        if ($excessAmount > 0) $message .= " ₱" . number_format($excessAmount, 2) . " to wallet.";
+
+        echo json_encode([
+            'success' => true,
+            'message' => $message,
+            'new_credit_balance' => $newCreditBalance,
+            'remaining_balance' => $newRemaining
+        ]);
+
+    } catch (Exception $e) {
+        $conn->rollBack();
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+?>

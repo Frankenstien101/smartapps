@@ -176,6 +176,16 @@
         </a>
       </div>
 
+       <div class="col-auto px-2">
+        <a href="portal.php?page=IRCompliance" class="card-link">
+          <div class="card-custom">
+            <img src="\LM\Home\img\transactions\ir.JPG" class="card-icon mb-3 mt-3" alt="Device Deployment Icon" style="height:100px;"/>
+            <div class="card-title">I.R COMPLIANCE</div>
+            <div class="card-text">Compliance of issued devices with I.R status.</div>
+          </div>
+        </a>
+      </div>
+
     </div>
 </div>
 

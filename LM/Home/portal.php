@@ -237,27 +237,27 @@ if (empty($checksession)) {
     $role = $_SESSION['Role'] ?? '';
     
     if ($role === 'ADMIN') {
-        // Admin pages logic
+     
         $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
-        $allowedPages = ['dashboard', 'transactions', 'reports2' , 'settings' , 'loadchecking', 'addnewdevice', 'loadrequest', 'loadcheckresult', 'loadpurchase', 'reports', 'devicelist', 'loadcheckingreport', 'purchasereport', 'submittedlist' , 'unsubmitted' , 'resign' , 'deploy', 'report_resigned','account_settings', 'qrchecking', 'QR-generator', 'devicestatus'];
+        $allowedPages = ['dashboard', 'transactions', 'reports2' , 'settings' , 'loadchecking', 'addnewdevice', 'loadrequest', 'loadcheckresult', 'loadpurchase', 'reports', 'devicelist', 'loadcheckingreport', 'purchasereport', 'submittedlist' , 'unsubmitted' , 'resign' , 'deploy', 'report_resigned','account_settings', 'qrchecking', 'QR-generator', 'devicestatus', 'damagereport' , 'IRCompliance'];
         if (in_array($page, $allowedPages)) {
             include "pages/{$page}.php";
         } else {
             include "pages/error.php";
         }
     } elseif ($role === 'FINANCE') {
-        // Encoder pages logic
+        
         $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
-        $allowedPages = ['dashboard', 'transactions', 'transactions-fin', 'reports2' , 'settings' , 'loadchecking', 'addnewdevice', 'loadrequest', 'loadcheckresult', 'loadpurchase', 'reports', 'devicelist', 'loadcheckingreport', 'purchasereport', 'submittedlist' , 'unsubmitted' , 'resign' , 'deploy', 'report_resigned','account_settings'];
+        $allowedPages = ['dashboard', 'transactions', 'transactions-fin', 'reports2' , 'settings' , 'loadchecking', 'addnewdevice', 'loadrequest', 'loadcheckresult', 'loadpurchase', 'reports', 'devicelist', 'loadcheckingreport', 'purchasereport', 'submittedlist' , 'unsubmitted' , 'resign' , 'deploy', 'report_resigned','account_settings' , 'damagereport'];
         if (in_array($page, $allowedPages)) {
             include "pages/{$page}.php";
         } else {
             echo "<h1 class='text-center'>Page not found or not allowed</h1>";
         }
     } elseif ($role === 'HR') {
-        // IRA pages logic
+      
         $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
-        $allowedPages = ['dashboard', 'transactions', 'transactions-hr','reports2' , 'settings' , 'loadchecking', 'addnewdevice', 'loadrequest', 'loadcheckresult', 'loadpurchase', 'reports', 'devicelist', 'loadcheckingreport', 'purchasereport', 'submittedlist' , 'unsubmitted' , 'resign' , 'deploy', 'report_resigned','account_settings'];
+        $allowedPages = ['dashboard', 'transactions', 'transactions-hr','reports2' , 'settings' , 'loadchecking', 'addnewdevice', 'loadrequest', 'loadcheckresult', 'loadpurchase', 'reports', 'devicelist', 'loadcheckingreport', 'purchasereport', 'submittedlist' , 'unsubmitted' , 'resign' , 'deploy', 'report_resigned','account_settings', 'damagereport'];
 
         if (in_array($page, $allowedPages)) {
           
@@ -283,6 +283,7 @@ if (empty($checksession)) {
         </script>";
         exit();
     }
+
     ?>
   </div>
 </div>

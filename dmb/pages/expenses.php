@@ -702,9 +702,18 @@ async function apiCall(action, method = 'GET', data = null) {
         const options = { method, headers: { 'Content-Type': 'application/json' } };
         if (data) options.body = JSON.stringify(data);
         const response = await fetch(`${API_URL}?action=${action}`, options);
-        const result = await response.json();
-        if (!result.success) {
-            showToast(result.message || 'API Error', 'error');
+        let result;
+        try {
+            result = await response.json();
+        } catch (error) {
+            throw new Error(`The expense server returned an invalid response (HTTP ${response.status}). Please check the server error log.`);
+        }
+        if (!result || typeof result !== 'object') {
+            throw new Error('The expense server returned an invalid response.');
+        }
+        if (!response.ok || !result.success) {
+            showToast(result.message || result.error || 'API Error', 'error');
+            return { ...result, success: false };
         }
         return result;
     } catch (error) {
@@ -871,48 +880,6 @@ async function editExpense(expenseId) {
     document.getElementById('editExpenseNotes').value = exp.Notes || '';
     
     openModal('editExpenseModal');
-}
-
-async function updateExpense(event) {
-    event.preventDefault();
-    
-    const expenseId = document.getElementById('editExpenseId').value;
-    const expenseDate = document.getElementById('editExpenseDate').value;
-    const expenseTypeId = document.getElementById('editExpenseTypeId').value;
-    const amount = document.getElementById('editExpenseAmount').value;
-    const notes = document.getElementById('editExpenseNotes').value;
-    
-    // Debug - log values
-    console.log('Updating expense:', {
-        expenseId,
-        expenseDate,
-        expenseTypeId,
-        amount,
-        notes
-    });
-    
-    if (!expenseDate || !expenseTypeId || !amount) {
-        showToast('Please fill in all required fields', 'error');
-        return;
-    }
-    
-    const result = await apiCall('updateExpense', 'POST', {
-        expense_id: parseInt(expenseId),
-        expense_date: expenseDate,
-        expense_type_id: parseInt(expenseTypeId),
-        amount: parseFloat(amount),
-        notes: notes
-    });
-    
-    console.log('Update result:', result);
-    
-    if (result.success) {
-        showToast('Expense updated successfully!', 'success');
-        closeModal('editExpenseModal');
-        loadExpenses();
-    } else {
-        showToast(result.message || 'Failed to update expense', 'error');
-    }
 }
 
 async function updateExpense(event) {

@@ -479,75 +479,99 @@
         }
 
         function exportToExcel() {
-            if (!forLoadDevicesData || forLoadDevicesData.length === 0) {
-                alert("No data available to export.");
-                return;
-            }
+    if (!forLoadDevicesData || forLoadDevicesData.length === 0) {
+        alert("No data available to export.");
+        return;
+    }
 
-            const exportData = forLoadDevicesData.map((item, index) => {
-                let remarksExport = item.REMARKS || '';
+    const exportData = forLoadDevicesData.map((item, index) => {
+        let remarksExport = item.REMARKS || '';
+        let statusExport = ''; // Default to empty
 
-                const balance = Number(item.BALANCE ?? 0);
-                const nextScheduleStr = item.NEXT_LOAD_SCHEDULE ?? '';
+        const balance = Number(item.BALANCE ?? 0);
+        const nextScheduleStr = item.NEXT_LOAD_SCHEDULE ?? '';
 
-                let isTodayBeforeNext = false;
-                if (nextScheduleStr && nextScheduleStr.trim() !== '') {
-                    try {
-                        const [year, month, day] = nextScheduleStr.trim().split('-').map(Number);
-                        const nextDate = new Date(year, month - 1, day);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        if (!isNaN(nextDate.getTime())) {
-                            isTodayBeforeNext = today < nextDate;
-                        }
-                    } catch (e) {}
+        let isTodayBeforeNext = false;
+        if (nextScheduleStr && nextScheduleStr.trim() !== '') {
+            try {
+                const [year, month, day] = nextScheduleStr.trim().split('-').map(Number);
+                const nextDate = new Date(year, month - 1, day);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (!isNaN(nextDate.getTime())) {
+                    isTodayBeforeNext = today < nextDate;
                 }
-
-                if (balance < 5 && isTodayBeforeNext) {
-                    if (!remarksExport.toUpperCase().includes('IR')) {
-                        remarksExport = remarksExport ? remarksExport + ' [IR]' : 'IR';
-                    }
-                }
-
-                return {
-                    "#": index + 1,
-                    "Site": item.SITE_ID || "",
-                    "Department": item.DEPARTMENT || "",
-                    "Principal": item.PRINCIPAL || "",
-                    "Position": item.POSITION || "",
-                    "Brand": item.BRAND || "",
-                    "Model": item.MODEL || "",
-                    "Serial": item.SERIAL || "",
-                    "Date Deployed": item.DATE_DEPLOYED || "",
-                    "User": item.PERSON_USING || "",
-                    "Number": item.NUMBER || "",
-                    "Balance (GB)": balance.toFixed(2),
-                    "Last Load": item.LAST_LOAD_HISTORY || "",
-                    "Next Load Schedule": item.NEXT_LOAD_SCHEDULE || "",
-                    "Load Term (mo.)": item.LOAD_TERMS || "",
-                    "Remarks": remarksExport,
-                    "Status": item.LOAD_STATUS || ""
-                };
-            });
-
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const colWidths = [];
-            Object.keys(exportData[0] || {}).forEach((key, i) => {
-                let maxLen = String(key).length;
-                exportData.forEach(row => {
-                    const val = String(row[key] || "");
-                    if (val.length > maxLen) maxLen = val.length;
-                });
-                colWidths[i] = { wch: Math.min(maxLen + 3, 45) };
-            });
-            ws['!cols'] = colWidths;
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Devices For Load");
-
-            const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
-            XLSX.writeFile(wb, `Devices_For_Load_${today}.xlsx`);
+            } catch (e) {}
         }
+
+        // Check if device needs IR (balance < 5 and today before next schedule)
+        const needsIR = balance < 5 && isTodayBeforeNext;
+
+        if (needsIR) {
+            if (!remarksExport.toUpperCase().includes('IR')) {
+                remarksExport = remarksExport ? remarksExport + ' [IR]' : 'IR';
+            }
+        }
+
+        // Check if device is complied
+        const isComplied = 
+            item.IS_COMPLIED === "YES" || 
+            item.IS_COMPLIED === "1" || 
+            item.IS_COMPLIED === 1 ||
+            item.DEVICE_IR_COMPLIED === "YES" ||
+            item.DEVICE_IR_COMPLIED === "1" ||
+            item.DEVICE_IR_COMPLIED === 1 ||
+            item.COMPLIED === "YES" ||
+            item.COMPLIED === "1" ||
+            item.COMPLIED === 1 ||
+            (item.LOAD_STATUS && item.LOAD_STATUS.toUpperCase() === "COMPLIED") ||
+            (item.REMARKS && item.REMARKS.toUpperCase().includes("COMPLIED"));
+
+        // 🔥 ONLY set status if complied, otherwise leave empty
+        if (isComplied) {
+            statusExport = "Complied";
+        }
+        // Otherwise statusExport stays empty (null)
+
+        return {
+            "#": index + 1,
+            "Site": item.SITE_ID || "",
+            "Department": item.DEPARTMENT || "",
+            "Principal": item.PRINCIPAL || "",
+            "Position": item.POSITION || "",
+            "Brand": item.BRAND || "",
+            "Model": item.MODEL || "",
+            "Serial": item.SERIAL || "",
+            "Date Deployed": item.DATE_DEPLOYED || "",
+            "User": item.PERSON_USING || "",
+            "Number": item.NUMBER || "",
+            "Balance (GB)": balance.toFixed(2),
+            "Last Load": item.LAST_LOAD_HISTORY || "",
+            "Next Load Schedule": item.NEXT_LOAD_SCHEDULE || "",
+            "Load Term (mo.)": item.LOAD_TERMS || "",
+            "Remarks": remarksExport,
+            "Status": statusExport  // Only "Complied" or empty
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const colWidths = [];
+    Object.keys(exportData[0] || {}).forEach((key, i) => {
+        let maxLen = String(key).length;
+        exportData.forEach(row => {
+            const val = String(row[key] || "");
+            if (val.length > maxLen) maxLen = val.length;
+        });
+        colWidths[i] = { wch: Math.min(maxLen + 3, 45) };
+    });
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Devices For Load");
+
+    const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
+    XLSX.writeFile(wb, `Devices_For_Load_${today}.xlsx`);
+}
 
         function refreshAllLoadStatus() {
             if (!confirm("This will recalculate and update LOAD_STATUS for ALL devices based on their current balance and last load date. Continue?")) {

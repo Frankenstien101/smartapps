@@ -1,6 +1,6 @@
 <?php
 session_start();
-include __DIR__ . '/../../DB/dbcon.php';
+include __DIR__ . 'DB/dbcon.php';
 
 header('Content-Type: application/json');
 

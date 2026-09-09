@@ -181,6 +181,8 @@
                             <th>DATA BALANCE</th>
                             <th>DATA USAGE</th>
                             <th>IS SUBMITTED</th>
+                            <th>LOAD IR</th>
+                            <th>DEVICE IR</th>
                             <th>PHYSICAL OK</th>
                             <th>HAS GAMES</th>
                             <th>SYSTEM UPDATED</th>
@@ -294,7 +296,7 @@ function renderTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-5">No matching records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="text-center text-muted py-5">No matching records found</td></tr>';
         return;
     }
 
@@ -312,6 +314,8 @@ function renderTable(data) {
             <td class="${isSubmitted ? 'text-success font-weight-bold' : 'text-danger'}">
                 ${isSubmitted ? '<span class="badge-submitted">✓ SUBMITTED</span>' : '<span class="badge-pending">⚠ PENDING</span>'}
             </td>
+            <td>${escapeHtml(getLoadIRText(item) || '-')}</td>
+            <td>${escapeHtml(getDeviceIRText(item) || '-')}</td>
             <td>${escapeHtml(item.IS_PHYSICAL_OK || '-')}</td>
             <td>${escapeHtml(item.HAS_GAMES || '-')}</td>
             <td>${escapeHtml(item.IS_SYSTEM_UPDATED || '-')}</td>
@@ -331,6 +335,50 @@ function escapeHtml(str) {
         if (m === '>') return '&gt;';
         return m;
     });
+}
+
+function parseDate(value) {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function addMonths(date, months) {
+    if (!date || typeof months !== 'number') return null;
+    const d = new Date(date.getTime());
+    d.setMonth(d.getMonth() + months);
+    return d;
+}
+
+function getLoadIRText(item) {
+    const balance = Number(item.LOAD_BALANCE ?? item.DEVICE_BALANCE ?? 0);
+    const loadTerms = Number(item.LOAD_TERMS ?? 0);
+    const lastLoadDate = parseDate(item.LAST_LOAD_HISTORY);
+    let nextLoadDate = null;
+    if (lastLoadDate && loadTerms > 0) {
+        nextLoadDate = addMonths(lastLoadDate, loadTerms);
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isTodayBeforeNext = nextLoadDate instanceof Date && today < nextLoadDate;
+    const needsLoadIR = balance < 5 && isTodayBeforeNext;
+    const isComplied = item.IS_COMPLIED === 'YES' || item.IS_COMPLIED === '1' || item.IS_COMPLIED === 1;
+    if (!needsLoadIR) return 'NO';
+    return isComplied ? 'LOAD IR COMPLIED' : 'LOAD IR PENDING';
+}
+
+function isDeviceStatusBad(status) {
+    if (!status) return false;
+    const badStatuses = ['DEFECTIVE', 'DAMAGED', 'REPAIR', 'BROKEN', 'FAULTY', 'FOR REPAIR', 'NOT WORKING', 'BAD'];
+    const normalized = status.toString().trim().toUpperCase();
+    return badStatuses.some(s => normalized.includes(s));
+}
+
+function getDeviceIRText(item) {
+    const needsDeviceIR = isDeviceStatusBad(item.DEVICE_STATUS);
+    const isComplied = item.DEVICE_IR_COMPLIED === 'YES' || item.DEVICE_IR_COMPLIED === '1' || item.DEVICE_IR_COMPLIED === 1;
+    if (!needsDeviceIR) return 'NO';
+    return isComplied ? 'DEVICE IR COMPLIED' : 'DEVICE IR PENDING';
 }
 
 function fetchTotalDevices(site = null) {
@@ -357,7 +405,7 @@ async function loaddeviceschecked() {
     const dateto    = document.getElementById('dateto').value;
 
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center py-5"><i class="fas fa-spinner fa-spin mr-2"></i>Loading data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="16" class="text-center py-5"><i class="fas fa-spinner fa-spin mr-2"></i>Loading data...</td></tr>';
 
     try {
         totalDevices = await fetchTotalDevices();
@@ -377,7 +425,7 @@ async function loaddeviceschecked() {
         await updateSummary();
     } catch (err) {
         console.error(err);
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger py-5"><i class="fas fa-exclamation-triangle mr-2"></i>Failed to load data</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="text-center text-danger py-5"><i class="fas fa-exclamation-triangle mr-2"></i>Failed to load data</td></tr>';
     }
 }
 
@@ -403,7 +451,8 @@ function exportToExcel() {
     // Prepare header names (matching visible table columns)
     const headers = [
         'SL NO', 'SITE', 'DATE CHECKED', 'USER', 'NUMBER', 
-        'DATA BALANCE (GB)', 'DATA USAGE (GB)', 'STATUS', 
+        'DATA BALANCE (GB)', 'DATA USAGE (GB)', 'STATUS',
+        'LOAD IR', 'DEVICE IR',
         'PHYSICAL OK', 'HAS GAMES', 'SYSTEM UPDATED', 
         'OTHER ISSUES', 'REMARKS', 'CHECKED BY'
     ];
@@ -418,6 +467,8 @@ function exportToExcel() {
         item.LOAD_BALANCE || '-',
         item.DATA_USAGE || '-',
         (item.IS_SUBMIT || '').toUpperCase() === 'YES' ? 'SUBMITTED' : 'PENDING',
+            getLoadIRText(item) || '-',
+            getDeviceIRText(item) || '-',
         item.IS_PHYSICAL_OK || '-',
         item.HAS_GAMES || '-',
         item.IS_SYSTEM_UPDATED || '-',
@@ -442,6 +493,8 @@ function exportToExcel() {
         {wch:14},  // DATA BALANCE
         {wch:14},  // DATA USAGE
         {wch:12},  // STATUS
+        {wch:12},  // LOAD IR
+        {wch:12},  // DEVICE IR
         {wch:12},  // PHYSICAL OK
         {wch:12},  // HAS GAMES
         {wch:14},  // SYSTEM UPDATED
@@ -451,7 +504,7 @@ function exportToExcel() {
     ];
     
     // Style the header row
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:N1');
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:P1');
     for (let C = range.s.c; C <= range.e.c; ++C) {
         const cellAddress = XLSX.utils.encode_cell({r:0, c:C});
         if (!ws[cellAddress]) continue;

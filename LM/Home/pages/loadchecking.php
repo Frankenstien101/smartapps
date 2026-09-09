@@ -12,6 +12,7 @@
     .card-body-scroll { overflow-y: auto; max-width: 100%; height: 600px; }
     table { table-layout: auto; width: 100%; border-collapse: collapse; }
     table th, table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; }
+    #itemsTable thead th { position: sticky; top: 0; z-index: 10; background-color: #e9ecef; }
     .table-container::-webkit-scrollbar { width: 6px; height: 6px; }
     .table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
     .table-container::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
@@ -166,12 +167,264 @@
         border-color: #002752 !important;
         box-shadow: 0 0 0 3px rgba(0, 64, 133, 0.25);
     }
+
+    /* User Avatar - Larger */
+    .user-avatar-large {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 60px;
+        overflow: hidden;
+        border: 3px solid #dee2e6;
+        margin: 0 auto 8px auto;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    .user-avatar-large:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .user-avatar-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        pointer-events: none;
+    }
+    .user-avatar-large .no-photo {
+        color: #adb5bd;
+        pointer-events: none;
+    }
+    .user-avatar-large .retake-btn {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        background: rgba(220, 53, 69, 0.85);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: scale(0.8);
+        z-index: 5;
+        pointer-events: auto;
+    }
+    .user-avatar-large:hover .retake-btn {
+        opacity: 1;
+        transform: scale(1);
+    }
+    .user-avatar-large .retake-btn:hover {
+        background: rgba(200, 35, 51, 1);
+        transform: scale(1.1);
+    }
+    .user-avatar-large .retake-btn:active {
+        transform: scale(0.9);
+    }
+    .user-name-large {
+        text-align: center;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .user-number-large {
+        text-align: center;
+        font-size: 12px;
+        color: #6c757d;
+    }
+
+    /* IR Status Badge */
+    .ir-status-badge {
+        display: none;
+        text-align: center;
+        margin: 0 auto 6px auto;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        width: fit-content;
+        background: #dc3545;
+        color: white;
+        animation: pulse-ir 1.5s ease-in-out infinite;
+    }
+    .ir-status-badge.show {
+        display: block;
+    }
+    .ir-status-badge {
+        border: 0;
+        cursor: pointer;
+    }
+    .ir-status-badge.load-ir {
+        background: #f59e0b;
+    }
+    @keyframes pulse-ir {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(0.97); }
+    }
+
+    /* Concerns Container */
+    .concerns-container {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 10px;
+        max-height: 550px;
+        overflow-y: auto;
+    }
+    .concerns-container .concerns-header {
+        font-size: 11px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        padding-bottom: 4px;
+        z-index: 1;
+    }
+    .concerns-table {
+        font-size: 10px;
+        margin: 0;
+        width: 100%;
+    }
+    .concerns-table th {
+        background: #e9ecef;
+        font-size: 9px;
+        padding: 3px 6px;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .concerns-table td {
+        padding: 4px 6px;
+        vertical-align: middle;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 10px;
+    }
+    .concerns-table .badge-open {
+        background: #dc3545;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 8px;
+        white-space: nowrap;
+    }
+    .concerns-table .badge-acknowledge {
+        background: #ffc107;
+        color: #212529;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 8px;
+        white-space: nowrap;
+    }
+    .concerns-table .badge-resolved {
+        background: #28a745;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 8px;
+        white-space: nowrap;
+    }
+    .concerns-table .btn-concern {
+        padding: 1px 6px;
+        font-size: 8px;
+        border-radius: 3px;
+    }
+    .concern-type-badge {
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 8px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .concern-type-physical { background: #e3f2fd; color: #0d47a1; }
+    .concern-type-uix { background: #f3e5f5; color: #160130; }
+    .concern-type-load { background: #fff3e0; color: #e65100; }
+    .concern-type-personal { background: #e8f5e9; color: #1b5e20; }
+    
+    .concern-text-cell {
+        max-width: 150px;
+        word-wrap: break-word;
+        white-space: normal;
+        font-size: 9px;
+    }
+    .concern-remark-cell {
+        font-size: 8px;
+        color: #6c757d;
+    }
+    .concern-user-cell {
+        font-size: 8px;
+        color: #495057;
+        white-space: nowrap;
+    }
+
+    .no-concerns-text {
+        font-size: 11px;
+        color: #6c757d;
+        text-align: center;
+        padding: 10px 0;
+    }
+
+    .add-concern-btn {
+        font-size: 9px;
+        padding: 2px 10px;
+        border-radius: 4px;
+    }
+
+    /* Add Concern Modal */
+    .add-concern-modal .modal-content {
+        border-radius: 12px;
+    }
+    .add-concern-modal .modal-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .add-concern-modal .modal-footer {
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+
+    @media (max-width: 768px) {
+        .user-avatar-large {
+            width: 80px;
+            height: 80px;
+            font-size: 40px;
+        }
+        .user-avatar-large .retake-btn {
+            width: 26px;
+            height: 26px;
+            font-size: 12px;
+        }
+        .concern-text-cell {
+            max-width: 80px;
+        }
+        .concerns-container {
+            max-height: 200px;
+        }
+    }
 </style>
 </head>
 <body>
 
 <h3>LOAD CHECKING TRANSACTION</h3>
 
+<!-- Main Card -->
 <div class="card text-bg-light" style="max-width: 100%; height: 750px; margin-bottom: 0.5rem; font-size: 9px;">
     <div class="card-header d-flex align-items-center py-1 px-2" style="min-height: 32px; flex-wrap: wrap; gap: 8px;">
         <div class="d-flex align-items-center gap-2 flex-wrap" style="flex: 1; min-width: 0;">
@@ -215,6 +468,7 @@
             <thead>
                 <tr>
                     <th>#</th>
+                    <th>KEYID</th>
                     <th>SITE</th>
                     <th>DEPARTMENT</th>
                     <th>PRINCIPAL</th>
@@ -247,7 +501,7 @@
 
 <!-- Edit Modal -->
 <div class="modal fade" id="editDeviceModal" tabindex="-1" role="dialog" aria-labelledby="editDeviceModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document" style="max-width: 75%;">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 92%;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             
             <div class="modal-header border-0 bg-light py-3 px-4">
@@ -264,293 +518,340 @@
                     <input type="hidden" id="edit_id" name="id">
 
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Site</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_site" name="SITE_ID">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Department</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_dept" name="DEPARTMENT">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Principal</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_principal" name="PRINCIPAL">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Position</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_position" name="POSITION">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Brand</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_brand" name="BRAND">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Model</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_model" name="MODEL">
-                                    </div>
-                                </div>
+                        <!-- LEFT COLUMN: User Avatar + Concerns -->
+                        <div class="col-md-3">
+                            <!-- IR Status Badge -->
+                            <button type="button" class="ir-status-badge load-ir" id="loadIRBadge" onclick="openLoadRequest()">⚠️ LOAD IR</button>
+                            <button type="button" class="ir-status-badge" id="deviceIssueIRBadge" onclick="openDeviceStatus()">⚠️ DEVICE ISSUE IR</button>
+                            
+                            <!-- User Avatar - Larger -->
+                            <div class="user-avatar-large" id="userAvatar" onclick="viewFullImage()">
+                                <span class="no-photo">👤</span>
+                                <button type="button" class="retake-btn" onclick="event.stopPropagation(); removePhoto();" title="Remove Photo">🗑️</button>
+                            </div>
+                            <div class="user-name-large" id="avatarUserName">No user</div>
+                            <div class="user-number-large" id="avatarUserNumber">-</div>
 
-                                <div class="col-6">
-                                    <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">
-                                        Last Load History <small class="text-primary">(editable)</small>
-                                    </label>
-                                    <input type="date" class="form-control form-control-sm modern-input text-center" 
-                                           id="edit_last_load" name="LAST_LOAD_HISTORY">
-                                    <small class="text-muted d-block mt-1" style="font-size:10px;">
-                                        Change only if the recorded date is incorrect
-                                    </small>
+                            <!-- Concerns Section -->
+                            <div class="concerns-container mt-2">
+                                <div class="concerns-header">
+                                    <span>📋 Concerns</span>
+                                    <span class="badge badge-secondary" id="concernCount">0</span>
                                 </div>
-
-                                <div class="col-6">
-                                    <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">Load Status (current)</label>
-                                    <input type="text" class="form-control form-control-sm modern-input text-center font-weight-bold" 
-                                           id="edit_load_status" readonly style="color:white;">
-                                </div>
-
-                                <div class="col-12 mt-1 mb-2">
-                                    <small class="text-muted" id="load_terms_explanation" style="font-size:10.5px; line-height:1.3;"></small>
+                                <div id="concernsWrapper">
+                                    <div class="no-concerns-text" id="noConcernsMessage">
+                                        No concerns raised
+                                    </div>
+                                    <table class="table concerns-table d-none" id="concernsTable">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:15%">Date</th>
+                                                <th style="width:12%">Type</th>
+                                                <th style="width:30%">Concern</th>
+                                                <th style="width:15%">Status</th>
+                                                <th style="width:28%">Action / By</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="concernsBody"></tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">IMEI</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_imei" name="IMEI">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Serial</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_serial" name="SERIAL">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Date Deployed</label>
-                                        <input type="date" class="form-control form-control-sm modern-input" id="edit_date" name="DATE_DEPLOYED">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Person Using</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_user" name="PERSON_USING">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Number</label>
-                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_number" name="NUMBER">
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="row g-1">
-                                        <div class="col-6">
-                                            <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">
-                                                Data Balance <span class="text-primary small">(Current)</span>
-                                            </label>
-                                            <input type="number" step="0.01" 
-                                                   class="form-control form-control-sm modern-input text-center" 
-                                                   id="edit_data_left" name="DATA_LEFT" 
-                                                   placeholder="e.g. 1.8" autofocus>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">
-                                                Data Consumed <span class="text-primary small">(Used)</span>
-                                            </label>
-                                            <input type="number" step="0.01" 
-                                                   class="form-control form-control-sm modern-input text-center" 
-                                                   id="edit_data_consumed" name="DATA_CONSUMED" 
-                                                   placeholder="0">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- DEVICE STATUS & REASON CODE - One Row -->
-                                <div class="col-12">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <div class="form-group mb-2">
-                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Device Status</label>
-                                                <select class="form-control form-control-sm modern-input" id="edit_device_status" name="DEVICE_STATUS" onchange="populateReasonCodes(this.value)">
-                                                    <option value="Good condition" selected>Good condition</option>
-                                                    <option value="Business Risk">Business Risk</option>
-                                                    <option value="Damaged for Repair">Damaged for Repair</option>
-                                                    <option value="Damaged for Disposal">Damaged for Disposal</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="form-group mb-2">
-                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Reason Code</label>
-                                                <select class="form-control form-control-sm modern-input" id="edit_reason_code" name="REASON_CODE">
-                                                    <option value="">Select Reason Code</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Repair Fields (shown when Damaged for Repair is selected) -->
-                                <div class="col-12 repair-fields" id="repairFields">
-                                    <div class="row">
-                                        <div class="col-4">
-                                            <div class="form-group mb-2">
-                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Date Surrendered</label>
-                                                <input type="date" class="form-control form-control-sm modern-input" id="edit_date_surrendered" name="DATE_SURRENDERED" value="<?php echo date('Y-m-d'); ?>">
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="form-group mb-2">
-                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Days to Repair</label>
-                                                <input type="number" class="form-control form-control-sm modern-input" id="edit_days_to_repair" name="DAYS_TO_REPAIR" placeholder="e.g. 5">
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="form-group mb-2">
-                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Temporary Device Serial</label>
-                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_temporary_device" name="TEMPORARY_DEVICE" placeholder="Serial ID">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- IT RECOMMENDATION -->
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">IT Recommendation</label>
-                                        <select class="form-control form-control-sm modern-input" id="edit_it_recommendation" name="IT_RECOMMENDATION">
-                                            <option value="">Select</option>
-                                            <option value="FOR REPLACEMENT">FOR REPLACEMENT</option>
-                                            <option value="FOR REPAIR">FOR REPAIR</option>
-                                            <option value="OK">OK</option>
-                                            <option value="OBSOLETE">OBSOLETE</option>
-                                            <option value="MONITOR">MONITOR</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <!-- CHARGED TO -->
-                                <div class="col-6">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Charged To</label>
-                                        <select class="form-control form-control-sm modern-input" id="edit_charged_to" name="CHARGED_TO">
-                                            <option value="">Select</option>
-                                            <option value="COMPANY">COMPANY</option>
-                                            <option value="SELLER">SELLER</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-12">
-                                    <div class="form-group mb-2">
-                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Remarks</label>
-                                        <div style="position:relative;">
-                                            <textarea class="form-control form-control-sm modern-input" 
-                                                      id="edit_remarks" name="REMARKS" rows="2" autocomplete="off"></textarea>
-                                            <div id="remarksAutocomplete" class="list-group" 
-                                                 style="position:absolute; left:0; right:0; top:100%; z-index:1200; display:none; max-height:180px; overflow:auto; box-shadow:0 6px 18px rgba(0,0,0,0.12);"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card border-0 shadow-sm bg-white mb-0 mt-3" style="border-radius: 10px;">
-                        <div class="card-body py-4 px-4">
+                        <!-- RIGHT COLUMN: Device Details -->
+                        <div class="col-md-9">
+                            <!-- [Device details section - same as before] -->
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
-                                            Data Usage Submitted?
-                                        </label>
-                                        <div class="d-flex align-items-center gap-5">
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="data_submitted" id="data_yes" value="Yes" checked>
-                                                <label class="form-check-label" for="data_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="data_submitted" id="data_no" value="No">
-                                                <label class="form-check-label" for="data_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Site</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_site" name="SITE_ID">
                                             </div>
                                         </div>
-                                    </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Department</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_dept" name="DEPARTMENT">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Principal</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_principal" name="PRINCIPAL">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Position</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_position" name="POSITION">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Brand</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_brand" name="BRAND">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Model</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_model" name="MODEL">
+                                            </div>
+                                        </div>
 
-                                    <div class="form-group mb-3">
-                                        <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
-                                            Physically OK?
-                                        </label>
-                                        <div class="d-flex align-items-center gap-5">
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="physically_ok" id="phys_ok_yes" value="Yes" checked>
-                                                <label class="form-check-label" for="phys_ok_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="physically_ok" id="phys_ok_no" value="No">
-                                                <label class="form-check-label" for="phys_ok_no" style="font-size: 11px; cursor: pointer;">No</label>
-                                            </div>
+                                        <div class="col-6">
+                                            <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">
+                                                Last Load History <small class="text-primary">(editable)</small>
+                                            </label>
+                                            <input type="date" class="form-control form-control-sm modern-input text-center" 
+                                                   id="edit_last_load" name="LAST_LOAD_HISTORY">
+                                            <small class="text-muted d-block mt-1" style="font-size:10px;">
+                                                Change only if the recorded date is incorrect
+                                            </small>
+                                        </div>
+
+                                        <div class="col-6">
+                                            <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">Load Status (current)</label>
+                                            <input type="text" class="form-control form-control-sm modern-input text-center font-weight-bold" 
+                                                   id="edit_load_status" readonly style="color:white;">
+                                        </div>
+
+                                        <div class="col-12 mt-1 mb-2">
+                                            <small class="text-muted" id="load_terms_explanation" style="font-size:10.5px; line-height:1.3;"></small>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
-                                            Games Installed / Used?
-                                        </label>
-                                        <div class="d-flex align-items-center gap-5">
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="games" id="games_yes" value="Yes">
-                                                <label class="form-check-label" for="games_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="games" id="games_no" value="No" checked>
-                                                <label class="form-check-label" for="games_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">IMEI</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_imei" name="IMEI">
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div class="form-group mb-3">
-                                        <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
-                                            System Updated?
-                                        </label>
-                                        <div class="d-flex align-items-center gap-5">
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="system_updated" id="sys_upd_yes" value="Yes" checked>
-                                                <label class="form-check-label" for="sys_upd_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Serial</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_serial" name="SERIAL">
                                             </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input checklist-radio" type="radio" name="system_updated" id="sys_upd_no" value="No">
-                                                <label class="form-check-label" for="sys_upd_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Date Deployed</label>
+                                                <input type="date" class="form-control form-control-sm modern-input" id="edit_date" name="DATE_DEPLOYED">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Person Using</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_user" name="PERSON_USING">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Number</label>
+                                                <input type="text" class="form-control form-control-sm modern-input" id="edit_number" name="NUMBER">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="row g-1">
+                                                <div class="col-6">
+                                                    <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">
+                                                        Data Balance <span class="text-primary small">(Current)</span>
+                                                    </label>
+                                                    <input type="number" step="0.01" 
+                                                           class="form-control form-control-sm modern-input text-center" 
+                                                           id="edit_data_left" name="DATA_LEFT" 
+                                                           placeholder="e.g. 1.8" autofocus>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="font-weight-medium text-muted small d-block" style="font-size:12px;">
+                                                        Data Consumed <span class="text-primary small">(Used)</span>
+                                                    </label>
+                                                    <input type="number" step="0.01" 
+                                                           class="form-control form-control-sm modern-input text-center" 
+                                                           id="edit_data_consumed" name="DATA_CONSUMED" 
+                                                           placeholder="0">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- DEVICE STATUS & REASON CODE -->
+                                        <div class="col-12">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <div class="form-group mb-2">
+                                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Device Status</label>
+                                                        <select class="form-control form-control-sm modern-input" id="edit_device_status" name="DEVICE_STATUS" onchange="populateReasonCodes(this.value); checkIRStatus();">
+                                                            <option value="Good condition" selected>Good condition</option>
+                                                            <option value="Business Risk">Business Risk</option>
+                                                            <option value="Damaged for Repair">Damaged for Repair</option>
+                                                            <option value="Damaged for Disposal">Damaged for Disposal</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-group mb-2">
+                                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Reason Code</label>
+                                                        <select class="form-control form-control-sm modern-input" id="edit_reason_code" name="REASON_CODE">
+                                                            <option value="">Select Reason Code</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Repair Fields -->
+                                        <div class="col-12 repair-fields" id="repairFields">
+                                            <div class="row">
+                                                <div class="col-4">
+                                                    <div class="form-group mb-2">
+                                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Date Surrendered</label>
+                                                        <input type="date" class="form-control form-control-sm modern-input" id="edit_date_surrendered" name="DATE_SURRENDERED">
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group mb-2">
+                                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Days to Repair</label>
+                                                        <input type="number" class="form-control form-control-sm modern-input" id="edit_days_to_repair" name="DAYS_TO_REPAIR" placeholder="e.g. 5">
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="form-group mb-2">
+                                                        <label class="font-weight-medium text-muted small" style="font-size:12px;">Temporary Device Serial</label>
+                                                        <input type="text" class="form-control form-control-sm modern-input" id="edit_temporary_device" name="TEMPORARY_DEVICE" placeholder="Serial ID">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- IT RECOMMENDATION -->
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">IT Recommendation</label>
+                                                <select class="form-control form-control-sm modern-input" id="edit_it_recommendation" name="IT_RECOMMENDATION">
+                                                    <option value="">Select</option>
+                                                    <option value="FOR REPLACEMENT">FOR REPLACEMENT</option>
+                                                    <option value="FOR REPAIR">FOR REPAIR</option>
+                                                    <option value="OK">OK</option>
+                                                    <option value="OBSOLETE">OBSOLETE</option>
+                                                    <option value="MONITOR">MONITOR</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- CHARGED TO -->
+                                        <div class="col-6">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Charged To</label>
+                                                <select class="form-control form-control-sm modern-input" id="edit_charged_to" name="CHARGED_TO">
+                                                    <option value="">Select</option>
+                                                    <option value="COMPANY">COMPANY</option>
+                                                    <option value="SELLER">SELLER</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-12">
+                                            <div class="form-group mb-2">
+                                                <label class="font-weight-medium text-muted small" style="font-size:12px;">Remarks</label>
+                                                <div style="position:relative;">
+                                                    <textarea class="form-control form-control-sm modern-input" 
+                                                              id="edit_remarks" name="REMARKS" rows="2" autocomplete="off"></textarea>
+                                                    <div id="remarksAutocomplete" class="list-group" 
+                                                         style="position:absolute; left:0; right:0; top:100%; z-index:1200; display:none; max-height:180px; overflow:auto; box-shadow:0 6px 18px rgba(0,0,0,0.12);"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="form-group mt-1 mb-0">
-                                <label class="font-weight-medium mb-2" style="font-size: 11px; color: #495057;">
-                                    Other Issues / Notes
-                                </label>
-                                <textarea class="form-control modern-input" id="other_issues" name="OTHER_ISSUES" rows="3"
-                                          placeholder="Enter any additional observations or comments..."
-                                          style="font-size: 11px; resize: vertical;"></textarea>
+                            <!-- Checklist Section -->
+                            <div class="card border-0 shadow-sm bg-white mb-0 mt-3" style="border-radius: 10px;">
+                                <div class="card-body py-4 px-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
+                                                    Data Usage Submitted?
+                                                </label>
+                                                <div class="d-flex align-items-center gap-5">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="data_submitted" id="data_yes" value="Yes" checked>
+                                                        <label class="form-check-label" for="data_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="data_submitted" id="data_no" value="No">
+                                                        <label class="form-check-label" for="data_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group mb-3">
+                                                <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
+                                                    Physically OK?
+                                                </label>
+                                                <div class="d-flex align-items-center gap-5">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="physically_ok" id="phys_ok_yes" value="Yes" checked>
+                                                        <label class="form-check-label" for="phys_ok_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="physically_ok" id="phys_ok_no" value="No">
+                                                        <label class="form-check-label" for="phys_ok_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
+                                                    Games Installed / Used?
+                                                </label>
+                                                <div class="d-flex align-items-center gap-5">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="games" id="games_yes" value="Yes">
+                                                        <label class="form-check-label" for="games_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="games" id="games_no" value="No" checked>
+                                                        <label class="form-check-label" for="games_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group mb-3">
+                                                <label class="font-weight-medium mb-1" style="font-size: 11px; color: #495057;">
+                                                    System Updated?
+                                                </label>
+                                                <div class="d-flex align-items-center gap-5">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="system_updated" id="sys_upd_yes" value="Yes" checked>
+                                                        <label class="form-check-label" for="sys_upd_yes" style="font-size: 11px; cursor: pointer;">Yes</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input checklist-radio" type="radio" name="system_updated" id="sys_upd_no" value="No">
+                                                        <label class="form-check-label" for="sys_upd_no" style="font-size: 11px; cursor: pointer;">No</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mt-1 mb-0">
+                                        <label class="font-weight-medium mb-2" style="font-size: 11px; color: #495057;">
+                                            Other Issues / Notes
+                                        </label>
+                                        <textarea class="form-control modern-input" id="other_issues" name="OTHER_ISSUES" rows="3"
+                                                  placeholder="Enter any additional observations or comments..."
+                                                  style="font-size: 11px; resize: vertical;"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -561,6 +862,80 @@
                     <button type="button" class="btn btn-primary btn-sm px-4 shadow-sm" id="btnUpdateOnly">UPDATE ONLY</button>
                     <button type="button" class="btn btn-success btn-sm px-4 shadow-sm" id="btnSaveChanges">SET AS SUBMITTED</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Concern Modal -->
+<div class="modal fade add-concern-modal" id="addConcernModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" style="font-size: 14px;">➕ Add Concern</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="font-size: 12px;">
+                <form id="addConcernForm">
+                    <div class="form-group">
+                        <label class="font-weight-medium">Concern Type *</label>
+                        <div class="concern-types d-flex flex-wrap gap-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="concern_type" id="ctype_physical" value="PHYSICAL">
+                                <label class="form-check-label" for="ctype_physical">🔧 Physical</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="concern_type" id="ctype_uix" value="UIX">
+                                <label class="form-check-label" for="ctype_uix">📱 UIX</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="concern_type" id="ctype_load" value="LOAD">
+                                <label class="form-check-label" for="ctype_load">💰 Load</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="concern_type" id="ctype_personal" value="PERSONAL_PHONE">
+                                <label class="form-check-label" for="ctype_personal">📞 Personal Phone</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="font-weight-medium">Concern Details *</label>
+                        <textarea class="form-control modern-input" id="concern_details" rows="3" placeholder="Describe the concern..." style="font-size: 12px;"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="font-weight-medium">Remarks <span class="text-muted">(Optional)</span></label>
+                        <textarea class="form-control modern-input" id="concern_remarks" rows="2" placeholder="Additional notes..." style="font-size: 12px;"></textarea>
+                    </div>
+                    
+                    <input type="hidden" id="concern_serial" value="">
+                    <input type="hidden" id="concern_person" value="">
+                    <input type="hidden" id="concern_number" value="">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="submitConcern()">Submit Concern</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full Image Modal -->
+<div class="modal fade" id="fullImageModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">User Photo</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="fullImageView" src="" alt="User Photo" style="max-width:100%; max-height:70vh; border-radius:8px;">
             </div>
         </div>
     </div>
@@ -613,7 +988,7 @@
 <div class="modal fade" id="qrScannerModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-md" role="document">
         <div class="modal-content">
-            <div class="modal-header" style="background: #6f42c1;">
+            <div class="modal-header" style="background: #945a03;">
                 <h5 class="modal-title font-weight-bold" style="color: white;">
                     📷 Scan QR Code
                 </h5>
@@ -634,6 +1009,8 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"></script>
 
 <script>
 // ============================================
@@ -675,7 +1052,8 @@ const reasonCodesByStatus = {
         'Severe liquid damage',
         'Board level failure',
         'Chassis bent/warped',
-        'IC short circuit'
+        'IC short circuit',
+        'No Active IT Asset - Device Tagged Damage for Disposal'
     ]
 };
 
@@ -811,6 +1189,98 @@ function findDeviceByQR(qrData) {
 }
 
 // ============================================
+// REMOVE PHOTO FUNCTION
+// ============================================
+function removePhoto() {
+    const lineId = document.getElementById('edit_id').value;
+    if (!lineId) {
+        showToast('⚠️ No device selected');
+        return;
+    }
+    
+    // Confirm before deleting
+    if (!confirm('Are you sure you want to remove this photo?')) {
+        return;
+    }
+    
+    const btn = document.querySelector('.retake-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    
+    fetch('/LM/datafetcher/loadcheckingdata.php?action=remove_photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineid: lineId })
+    })
+    .then(r => r.json())
+    .then(res => {
+        btn.disabled = false;
+        btn.textContent = '🗑️';
+        
+        if (res.success) {
+            // Update the avatar to show no photo
+            const avatarDiv = document.getElementById('userAvatar');
+            avatarDiv.innerHTML = `
+                <span class="no-photo">👤</span>
+                <button type="button" class="retake-btn" onclick="event.stopPropagation(); removePhoto();" title="Remove Photo">🗑️</button>
+            `;
+            currentImageData = '';
+            
+            // Update the item in loadedPOs
+            const idx = loadedPOs.findIndex(item => item.LINEID == lineId);
+            if (idx !== -1) {
+                loadedPOs[idx].PERSON_IMAGE = '';
+            }
+            
+            showToast('✅ Photo removed successfully!');
+        } else {
+            showToast('❌ Failed to remove photo: ' + (res.message || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Remove photo error:', err);
+        btn.disabled = false;
+        btn.textContent = '🗑️';
+        showToast('❌ Error removing photo');
+    });
+}
+
+// ============================================
+// IR STATUS CHECK
+// ============================================
+function checkIRStatus() {
+    const deviceStatus = document.getElementById('edit_device_status').value;
+    const irComplied = document.getElementById('edit_ir_complied')?.value || '';
+    const loadBadge = document.getElementById('loadIRBadge');
+    const deviceIssueBadge = document.getElementById('deviceIssueIRBadge');
+    const lastLoadDate = document.getElementById('edit_last_load')?.value || '';
+    const balance = document.getElementById('edit_data_left')?.value || 0;
+    
+    loadBadge?.classList.toggle('show', isForLoad(lastLoadDate, balance));
+    deviceIssueBadge?.classList.toggle('show', deviceStatus !== 'Good condition' && irComplied !== 'YES');
+}
+
+function openDeviceStatus() {
+    const lineId = document.getElementById('edit_id')?.value.trim();
+    if (!lineId) {
+        showToast('⚠️ No device selected');
+        return;
+    }
+
+    window.location.href = `/LM/Home/pages/devicestatus.php?lineid=${encodeURIComponent(lineId)}`;
+}
+
+function openLoadRequest() {
+    const lineId = document.getElementById('edit_id')?.value.trim();
+    if (!lineId) {
+        showToast('⚠️ No device selected');
+        return;
+    }
+
+    window.location.href = `/LM/Home/pages/loadrequest.php?lineid=${encodeURIComponent(lineId)}`;
+}
+
+// ============================================
 // POPULATE REASON CODES
 // ============================================
 function populateReasonCodes(deviceStatus) {
@@ -833,10 +1303,12 @@ function populateReasonCodes(deviceStatus) {
         document.getElementById('edit_days_to_repair').value = '';
         document.getElementById('edit_temporary_device').value = '';
     }
+    
+    checkIRStatus();
 }
 
 // ============================================
-// MARK EDITED BALANCE FIELD - NOW LASTS 5 DAYS
+// MARK EDITED BALANCE FIELD
 // ============================================
 function markAsEdited(input) {
     const originalValue = input.dataset.original || '';
@@ -844,7 +1316,6 @@ function markAsEdited(input) {
     
     if (currentValue !== originalValue) {
         input.classList.add('edited');
-        // Save to localStorage that this balance was edited today
         saveBalanceEditStatus(input.dataset.id);
     } else {
         input.classList.remove('edited');
@@ -861,13 +1332,10 @@ function saveBalanceEditStatus(lineId) {
     localStorage.setItem(key, JSON.stringify(editedData));
 }
 
-// UPDATED: Check for edits in the last 5 days
 function checkEditedBalances() {
-    // Check for the last 5 days
     const today = new Date();
     const editedData = {};
     
-    // Collect all edited balances from the last 5 days
     for (let i = 0; i < 5; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -877,12 +1345,9 @@ function checkEditedBalances() {
         try {
             const data = JSON.parse(localStorage.getItem(key) || '{}');
             Object.assign(editedData, data);
-        } catch (e) {
-            // Ignore invalid JSON
-        }
+        } catch (e) {}
     }
     
-    // Apply the edited class to matching inputs
     document.querySelectorAll('.balance-input').forEach(input => {
         const lineId = input.dataset.id;
         if (lineId && editedData[lineId]) {
@@ -891,10 +1356,8 @@ function checkEditedBalances() {
     });
 }
 
-// Optional: Clean up old entries older than 5 days
 function cleanOldBalanceEdits() {
     const today = new Date();
-    // Keep only the last 5 days
     for (let i = 5; i < 365; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -908,21 +1371,23 @@ function cleanOldBalanceEdits() {
 // GLOBAL VARIABLES
 // ============================================
 let loadedPOs = [];
+let currentImageData = '';
+let currentDeviceSerial = '';
 
 const COLUMN_VISIBILITY_KEY = 'loadchecking_column_visibility';
 
 const columnMap = {
-    '1':  { index: 1,  name: 'SITE'          },
-    '2':  { index: 2,  name: 'DEPARTMENT'    },
-    '3':  { index: 3,  name: 'PRINCIPAL'     },
-    '4':  { index: 4,  name: 'POSITION'      },
-    '5':  { index: 5,  name: 'BRAND'         },
-    '6':  { index: 6,  name: 'MODEL'         },
-    '7':  { index: 7,  name: 'SERIAL'        },
-    '8':  { index: 8,  name: 'DATE DEPLOYED' },
-    '9':  { index: 9,  name: 'USER'          },
-    '10': { index: 13, name: 'LAST LOAD'     },
-    '11': { index: 14, name: 'LOAD STATUS'   }
+    '1':  { index: 2,  name: 'SITE'          },
+    '2':  { index: 3,  name: 'DEPARTMENT'    },
+    '3':  { index: 4,  name: 'PRINCIPAL'     },
+    '4':  { index: 5,  name: 'POSITION'      },
+    '5':  { index: 6,  name: 'BRAND'         },
+    '6':  { index: 7,  name: 'MODEL'         },
+    '7':  { index: 8,  name: 'SERIAL'        },
+    '8':  { index: 9,  name: 'DATE DEPLOYED' },
+    '9':  { index: 10, name: 'USER'          },
+    '10': { index: 14, name: 'LAST LOAD'     },
+    '11': { index: 15, name: 'LOAD STATUS'   }
 };
 
 function setRadio(name, value) {
@@ -955,22 +1420,23 @@ function updateMainTableRow(index, item) {
     const row = document.querySelector(`#itemsTable tbody tr:nth-child(${index + 1})`);
     if (!row) return;
 
-    row.cells[1].textContent = item.SITE_ID || '';
-    row.cells[2].textContent = item.DEPARTMENT || '';
-    row.cells[3].textContent = item.PRINCIPAL || '';
-    row.cells[4].textContent = item.POSITION || '';
-    row.cells[5].textContent = item.BRAND || item.BARND || '';
-    row.cells[6].textContent = item.MODEL || '';
-    row.cells[7].textContent = item.SERIAL || '';
-    row.cells[8].textContent = item.DATE_DEPLOYED || '';
-    row.cells[9].textContent = item.PERSON_USING || '';
-    row.cells[10].textContent = item.NUMBER || '';
-    row.cells[15].textContent = item.DEVICE_STATUS || '';
-    row.cells[16].textContent = item.REASON_CODE || '';
-    row.cells[17].textContent = item.IT_RECOMMENDATION || '';
-    row.cells[18].textContent = item.CHARGED_TO || '';
+    row.cells[1].textContent = item.LINEID || '';
+    row.cells[2].textContent = item.SITE_ID || '';
+    row.cells[3].textContent = item.DEPARTMENT || '';
+    row.cells[4].textContent = item.PRINCIPAL || '';
+    row.cells[5].textContent = item.POSITION || '';
+    row.cells[6].textContent = item.BRAND || item.BARND || '';
+    row.cells[7].textContent = item.MODEL || '';
+    row.cells[8].textContent = item.SERIAL || '';
+    row.cells[9].textContent = item.DATE_DEPLOYED || '';
+    row.cells[10].textContent = item.PERSON_USING || '';
+    row.cells[11].textContent = item.NUMBER || '';
+    row.cells[16].textContent = item.DEVICE_STATUS || '';
+    row.cells[17].textContent = item.REASON_CODE || '';
+    row.cells[18].textContent = item.IT_RECOMMENDATION || '';
+    row.cells[19].textContent = item.CHARGED_TO || '';
 
-    const dataInput = row.cells[11].querySelector('input.balance-input');
+    const dataInput = row.cells[12].querySelector('input.balance-input');
     if (dataInput) {
         dataInput.value = Number(item.BALANCE ?? 0).toFixed(2);
         dataInput.dataset.old = item.BALANCE ?? '';
@@ -978,7 +1444,7 @@ function updateMainTableRow(index, item) {
         dataInput.dataset.original = item.BALANCE ?? '';
     }
 
-    const consumedSpan = row.cells[12].querySelector('.consumed-data');
+    const consumedSpan = row.cells[13].querySelector('.consumed-data');
     if (consumedSpan && dataInput) {
         const initial = parseFloat(dataInput.dataset.initial) || 0;
         const current = parseFloat(dataInput.value) || 0;
@@ -987,16 +1453,16 @@ function updateMainTableRow(index, item) {
         consumedSpan.dataset.consumed = consumed.toFixed(2);
     }
 
-    row.cells[13].textContent = item.LAST_LOAD_HISTORY || '-';
+    row.cells[14].textContent = item.LAST_LOAD_HISTORY || '-';
 
     const forLoad = isForLoad(item.LAST_LOAD_HISTORY, item.BALANCE);
-    row.cells[14].textContent = forLoad ? 'FOR LOAD' : 'OK';
-    row.cells[14].style.backgroundColor = forLoad ? 'red' : 'green';
-    row.cells[14].style.color = 'white';
-    row.cells[14].style.fontWeight = 'bold';
-    row.cells[14].style.textAlign = 'center';
+    row.cells[15].textContent = forLoad ? 'FOR LOAD' : 'OK';
+    row.cells[15].style.backgroundColor = forLoad ? 'red' : 'green';
+    row.cells[15].style.color = 'white';
+    row.cells[15].style.fontWeight = 'bold';
+    row.cells[15].style.textAlign = 'center';
 
-    const remarksInput = row.cells[19].querySelector('input.remarks-input');
+    const remarksInput = row.cells[20].querySelector('input.remarks-input');
     if (remarksInput) {
         remarksInput.value = (item.REMARKS || item.OTHER_ISSUES || '').toString().substring(0,120) || '';
     }
@@ -1016,7 +1482,7 @@ function loaddevices() {
             loadedPOs = data || [];
             tbody.innerHTML = '';
             if (loadedPOs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="21" class="text-center">No items found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="22" class="text-center">No items found.</td></tr>`;
             } else {
                 loadedPOs.forEach((item, index) => {
                     const forLoad = isForLoad(item.LAST_LOAD_HISTORY, item.BALANCE);
@@ -1071,6 +1537,7 @@ function loaddevices() {
                     }
                     tr.innerHTML = `
                         <td>${index + 1}</td>
+                        <td>${item.LINEID || ''}</td>
                         <td>${item.SITE_ID || ''}</td>
                         <td>${item.DEPARTMENT || ''}</td>
                         <td>${item.PRINCIPAL || ''}</td>
@@ -1121,10 +1588,7 @@ function loaddevices() {
                     updateTableConsumedData(input);
                 });
                 
-                // Check and apply edited state - NOW CHECKS LAST 5 DAYS
                 checkEditedBalances();
-                
-                // Optional: Clean up old entries (older than 5 days)
                 cleanOldBalanceEdits();
             }
 
@@ -1333,7 +1797,7 @@ function applyFilters() {
     document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
         if (row.cells.length < 2) return;
         const rowText = row.textContent.toLowerCase();
-        const siteCell = row.cells[1];
+        const siteCell = row.cells[2];
         const rowSite = siteCell ? siteCell.textContent.trim() : '';
         const matchesSearch = rowText.includes(searchText);
         const matchesSite = !selectedSite || rowSite === selectedSite;
@@ -1341,6 +1805,265 @@ function applyFilters() {
     });
 }
 
+// ============================================
+// CONCERN FUNCTIONS - WITH USER TRACKING
+// ============================================
+
+function loadConcerns(serial) {
+    const tbody = document.getElementById('concernsBody');
+    const table = document.getElementById('concernsTable');
+    const noMsg = document.getElementById('noConcernsMessage');
+    const countBadge = document.getElementById('concernCount');
+    
+    tbody.innerHTML = '';
+    table.classList.add('d-none');
+    noMsg.classList.remove('d-none');
+    noMsg.textContent = 'Loading concerns...';
+    countBadge.textContent = '0';
+    
+    if (!serial) {
+        noMsg.textContent = 'No serial number available';
+        return;
+    }
+    
+    fetch(`/LM/datafetcher/loadcheckingdata.php?action=get_concerns_by_serial&serial=${encodeURIComponent(serial)}`)
+        .then(r => r.ok ? r.json() : Promise.reject('Failed'))
+        .then(data => {
+            const concerns = data.concerns || [];
+            countBadge.textContent = concerns.length;
+            
+            if (concerns.length === 0) {
+                table.classList.add('d-none');
+                noMsg.classList.remove('d-none');
+                noMsg.textContent = 'No concerns raised';
+                return;
+            }
+            
+            noMsg.classList.add('d-none');
+            table.classList.remove('d-none');
+            
+            concerns.forEach(concern => {
+                const tr = document.createElement('tr');
+                
+                let statusBadge = '';
+                let actionHtml = '';
+                
+                if (concern.STATUS === 'OPEN') {
+                    statusBadge = `<span class="badge-open">OPEN</span>`;
+                    actionHtml = `
+                        <button class="btn btn-warning btn-concern" onclick="updateConcernStatus('${concern.LINEID}', 'ACKNOWLEDGE', this)">
+                            Acknowledge
+                        </button>
+                    `;
+                } else if (concern.STATUS === 'ACKNOWLEDGE') {
+                    const acknowledgedBy = concern.ACKNOWLEDGED_BY || 'Unknown';
+                    statusBadge = `<span class="badge-acknowledge">ACK</span>`;
+                    actionHtml = `
+                        <span class="badge-acknowledge mr-1">ACK</span>
+                        <button class="btn btn-success btn-concern" onclick="updateConcernStatus('${concern.LINEID}', 'RESOLVED', this)">
+                            Resolve
+                        </button>
+                        <br><span class="concern-user-cell">by: ${acknowledgedBy}</span>
+                    `;
+                } else if (concern.STATUS === 'RESOLVED') {
+                    const resolvedBy = concern.RESOLVED_BY || 'Unknown';
+                    statusBadge = `<span class="badge-resolved">✓</span>`;
+                    actionHtml = `
+                        <span class="badge-resolved">✓ Resolved</span>
+                        <br><span class="concern-user-cell">by: ${resolvedBy}</span>
+                    `;
+                }
+                
+                let typeBadge = '';
+                const typeMap = {
+                    'PHYSICAL': 'concern-type-physical',
+                    'UIX': 'concern-type-uix',
+                    'LOAD': 'concern-type-load',
+                    'PERSONAL_PHONE': 'concern-type-personal'
+                };
+                const typeClass = typeMap[concern.TYPE] || '';
+                typeBadge = `<span class="concern-type-badge ${typeClass}">${concern.TYPE || 'N/A'}</span>`;
+                
+                tr.innerHTML = `
+                    <td style="font-size:9px;">${concern.DATE_RAISE || '-'}</td>
+                    <td>${typeBadge}</td>
+                    <td class="concern-text-cell">
+                        ${concern.CONCERN_TEXT || '-'}
+                        ${concern.REMARKS ? `<br><span class="concern-remark-cell">📝 ${concern.REMARKS}</span>` : ''}
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td style="white-space:nowrap; font-size:9px;">${actionHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading concerns:', err);
+            noMsg.textContent = 'Error loading concerns';
+        });
+}
+
+function updateConcernStatus(lineId, newStatus, buttonElement) {
+    if (!lineId) return;
+    
+    // Disable button and show loading
+    if (buttonElement) {
+        buttonElement.disabled = true;
+        buttonElement.textContent = '⏳';
+    }
+    
+    fetch('/LM/datafetcher/loadcheckingdata.php?action=update_concern_status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineid: lineId, status: newStatus })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            // Reload concerns without page refresh
+            const serial = document.getElementById('edit_serial').value;
+            if (serial) {
+                loadConcerns(serial);
+            }
+            const user = res.user || '';
+            showToast(`✅ Concern ${newStatus === 'ACKNOWLEDGE' ? 'acknowledged' : 'resolved'} by ${user}`);
+        } else {
+            alert('Failed to update concern: ' + (res.message || 'Unknown error'));
+            // Re-enable button
+            if (buttonElement) {
+                buttonElement.disabled = false;
+                buttonElement.textContent = newStatus === 'ACKNOWLEDGE' ? 'Acknowledge' : 'Resolve';
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Error updating concern:', err);
+        alert('Error updating concern status.');
+        // Re-enable button
+        if (buttonElement) {
+            buttonElement.disabled = false;
+            buttonElement.textContent = newStatus === 'ACKNOWLEDGE' ? 'Acknowledge' : 'Resolve';
+        }
+    });
+}
+
+function openAddConcernModal() {
+    const serial = document.getElementById('edit_serial').value;
+    const person = document.getElementById('edit_user').value;
+    const number = document.getElementById('edit_number').value;
+    
+    if (!serial) {
+        showToast('❌ Please select a device first');
+        return;
+    }
+    
+    document.getElementById('concern_serial').value = serial;
+    document.getElementById('concern_person').value = person;
+    document.getElementById('concern_number').value = number;
+    document.getElementById('concern_details').value = '';
+    document.getElementById('concern_remarks').value = '';
+    
+    // Uncheck all radio buttons
+    document.querySelectorAll('input[name="concern_type"]').forEach(el => el.checked = false);
+    
+    $('#addConcernModal').modal('show');
+}
+
+function submitConcern() {
+    const serial = document.getElementById('concern_serial').value;
+    const person = document.getElementById('concern_person').value;
+    const number = document.getElementById('concern_number').value;
+    const type = document.querySelector('input[name="concern_type"]:checked');
+    const details = document.getElementById('concern_details').value.trim();
+    const remarks = document.getElementById('concern_remarks').value.trim();
+    
+    if (!type) {
+        showToast('⚠️ Please select a concern type');
+        return;
+    }
+    
+    if (!details) {
+        showToast('⚠️ Please enter concern details');
+        return;
+    }
+    
+    const data = {
+        serial: serial,
+        person: person,
+        number: number,
+        type: type.value,
+        concern_text: details,
+        remarks: remarks
+    };
+    
+    // Disable submit button
+    const submitBtn = document.querySelector('#addConcernModal .btn-primary');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Submitting...';
+    
+    fetch('/LM/datafetcher/loadcheckingdata.php?action=add_concern', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            $('#addConcernModal').modal('hide');
+            showToast('✅ Concern added successfully!');
+            // Reload concerns without page refresh
+            loadConcerns(serial);
+        } else {
+            alert('Failed to add concern: ' + (res.message || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Error adding concern:', err);
+        alert('Error adding concern.');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Concern';
+    });
+}
+
+// ============================================
+// VIEW FULL IMAGE
+// ============================================
+function viewFullImage() {
+    if (currentImageData) {
+        document.getElementById('fullImageView').src = currentImageData;
+        $('#fullImageModal').modal('show');
+    } else {
+        showToast('No photo available for this user.');
+    }
+}
+
+// ============================================
+// TOAST NOTIFICATION
+// ============================================
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: rgba(0,0,0,0.85); color: #fff; padding: 12px 24px;
+        border-radius: 8px; z-index: 9999; font-size: 14px;
+        max-width: 90%; text-align: center;
+        animation: fadeInUp 0.3s ease;
+    `;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ============================================
+// SELECT DEVICE
+// ============================================
 function selectDevice(index) {
     const item = loadedPOs[index];
     if (!item) {
@@ -1362,28 +2085,37 @@ function selectDevice(index) {
     document.getElementById('edit_date').value       = dateVal;
     document.getElementById('edit_user').value       = item.PERSON_USING || '';
     document.getElementById('edit_number').value     = item.NUMBER || '';
-    document.getElementById('edit_data_left').value  = item.BALANCE || '';
-    document.getElementById('edit_data_consumed').value = item.DATA_USAGE || '';
+    const dataLeftInput = document.getElementById('edit_data_left');
+    const dataConsumedInput = document.getElementById('edit_data_consumed');
+    const encodedBalance = Number(item.BALANCE) || 0;
+    const encodedConsumed = Number(item.CONSUMED) || 0;
+    dataLeftInput.value = item.BALANCE ?? '';
+    dataLeftInput.dataset.initialBalance = encodedBalance + encodedConsumed;
+    dataConsumedInput.value = encodedConsumed.toFixed(2);
+    autoComputeDataConsumed();
     document.getElementById('edit_remarks').value    = item.REMARKS || '';
     document.getElementById('edit_last_load').value  = item.LAST_LOAD_HISTORY || '';
     
-    // Device Status
     document.getElementById('edit_device_status').value = item.DEVICE_STATUS || 'Good condition';
-    
-    // Populate Reason Codes based on status
     populateReasonCodes(item.DEVICE_STATUS || 'Good condition');
-    
-    // Set Reason Code value
     document.getElementById('edit_reason_code').value = item.REASON_CODE || '';
     
-    // Repair fields
     document.getElementById('edit_date_surrendered').value = item.DATE_SURRENDERED || '';
     document.getElementById('edit_days_to_repair').value = item.DAYS_TO_REPAIR || '';
     document.getElementById('edit_temporary_device').value = item.TEMPORARY_DEVICE || '';
     
-    // IT Recommendation & Charged To
     document.getElementById('edit_it_recommendation').value = item.IT_RECOMMENDATION || '';
     document.getElementById('edit_charged_to').value = item.CHARGED_TO || '';
+
+    // Add hidden field for IR compliance (if not exists, create it)
+    let irField = document.getElementById('edit_ir_complied');
+    if (!irField) {
+        irField = document.createElement('input');
+        irField.type = 'hidden';
+        irField.id = 'edit_ir_complied';
+        document.getElementById('editDeviceForm').appendChild(irField);
+    }
+    irField.value = item.IR_COMPLIED || '';
 
     let lastLoadVal = '';
     if (item.LAST_LOAD_HISTORY) {
@@ -1408,6 +2140,7 @@ function selectDevice(index) {
         const needsLoad = isForLoad(newDate, bal);
         statusEl.value = needsLoad ? 'FOR LOAD' : 'OK';
         statusEl.style.backgroundColor = needsLoad ? '#dc3545' : '#28a745';
+        checkIRStatus();
     };
 
     lastLoadInput.removeEventListener('change', updateStatusLive);
@@ -1436,6 +2169,39 @@ function selectDevice(index) {
     setRadio('games', item.GAMES || 'No');
     setRadio('system_updated', item.SYSTEM_UPDATED || 'Yes');
     document.getElementById('other_issues').value = item.OTHER_ISSUES || '';
+
+    // UPDATE USER AVATAR
+    const avatarDiv = document.getElementById('userAvatar');
+    const userNameSpan = document.getElementById('avatarUserName');
+    const userNumberSpan = document.getElementById('avatarUserNumber');
+    
+    userNameSpan.textContent = item.PERSON_USING || 'No user';
+    userNumberSpan.textContent = item.NUMBER || '-';
+    
+    if (item.PERSON_IMAGE && item.PERSON_IMAGE.trim() !== '') {
+        let imageUrl = item.PERSON_IMAGE;
+        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            imageUrl = '/lm/home/pages/' + imageUrl;
+            imageUrl = imageUrl.replace(/\\/g, '/');
+        }
+        currentImageData = imageUrl;
+        avatarDiv.innerHTML = `
+            <img src="${imageUrl}" alt="${item.PERSON_USING || 'User'}">
+            <button type="button" class="retake-btn" onclick="event.stopPropagation(); removePhoto();" title="Remove Photo">🗑️</button>
+        `;
+    } else {
+        currentImageData = '';
+        avatarDiv.innerHTML = `
+            <span class="no-photo">👤</span>
+            <button type="button" class="retake-btn" onclick="event.stopPropagation(); removePhoto();" title="Remove Photo">🗑️</button>
+        `;
+    }
+
+    // Check IR status
+    checkIRStatus();
+
+    // LOAD CONCERNS
+    loadConcerns(item.SERIAL || '');
 
     document.querySelectorAll('#itemsTable tbody tr').forEach(r => r.classList.remove('table-active'));
     document.querySelectorAll('#itemsTable tbody tr')[index]?.classList.add('table-active');
@@ -1690,7 +2456,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.addEventListener('input', e => {
-        if (e.target?.id === 'edit_data_left') autoComputeDataConsumed();
+        if (e.target?.id === 'edit_data_left') {
+            autoComputeDataConsumed();
+            checkIRStatus();
+        }
         if (e.target?.classList?.contains('balance-input')) updateTableConsumedData(e.target);
     });
 

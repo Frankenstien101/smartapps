@@ -37,6 +37,170 @@ function logAuditChange(
 
 $action = $_GET['action'] ?? '';
 
+
+// ============================================
+// REMOVE PHOTO
+// ============================================
+if ($action === 'remove_photo') {
+    header('Content-Type: application/json');
+    
+    $input = json_decode(file_get_contents('php://input'), true);
+    $lineid = $input['lineid'] ?? '';
+    
+    if (empty($lineid)) {
+        echo json_encode(['success' => false, 'message' => 'LINEID is required']);
+        exit;
+    }
+    
+    try {
+        // Get the current photo path before removing
+        $stmtOld = $conn->prepare("SELECT PERSON_IMAGE FROM BS_Device WHERE LINEID = :id");
+        $stmtOld->execute([':id' => $lineid]);
+        $old = $stmtOld->fetch(PDO::FETCH_ASSOC);
+        
+        $oldPhoto = $old['PERSON_IMAGE'] ?? '';
+        
+        // If there's an existing photo file, try to delete it from the server
+        if (!empty($oldPhoto)) {
+            // Construct the file path (adjust the path as needed)
+            $filePath = __DIR__ . '/../../home/pages/' . $oldPhoto;
+            // Also try alternative path
+            if (!file_exists($filePath)) {
+                $filePath = __DIR__ . '/../../' . $oldPhoto;
+            }
+            // Delete the file if it exists
+            if (file_exists($filePath) && is_file($filePath)) {
+                @unlink($filePath);
+            }
+        }
+        
+        // Update the database to clear PERSON_IMAGE
+        $stmt = $conn->prepare("UPDATE BS_Device SET PERSON_IMAGE = '' WHERE LINEID = :id");
+        $stmt->execute([':id' => $lineid]);
+        
+        // Log the action
+        if (!empty($oldPhoto)) {
+            logAuditChange(
+                $conn,
+                $lineid,
+                'REMOVE_PHOTO',
+                ['PERSON_IMAGE' => ['old' => $oldPhoto, 'new' => '']],
+                'Photo removed by user'
+            );
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Photo removed successfully'
+        ]);
+        
+    } catch (PDOException $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
+// ============================================
+// UPLOAD USER PHOTO
+// ============================================
+if ($action === 'upload_user_photo') {
+    header('Content-Type: application/json');
+    
+    $input = json_decode(file_get_contents('php://input'), true);
+    $lineid = $input['lineid'] ?? '';
+    $imageData = $input['imageData'] ?? '';
+    
+    if (empty($lineid)) {
+        echo json_encode(['success' => false, 'message' => 'LINEID is required']);
+        exit;
+    }
+    
+    if (empty($imageData)) {
+        echo json_encode(['success' => false, 'message' => 'No image data provided']);
+        exit;
+    }
+    
+    try {
+        // Get the user name for the filename
+        $stmtUser = $conn->prepare("SELECT PERSON_USING, COMPANY_ID FROM BS_Device WHERE LINEID = :id");
+        $stmtUser->execute([':id' => $lineid]);
+        $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'Device not found']);
+            exit;
+        }
+        
+        // Decode base64 image
+        $imageData = str_replace('data:image/jpeg;base64,', '', $imageData);
+        $imageData = str_replace('data:image/png;base64,', '', $imageData);
+        $imageData = str_replace(' ', '+', $imageData);
+        $imageBinary = base64_decode($imageData);
+        
+        if ($imageBinary === false) {
+            echo json_encode(['success' => false, 'message' => 'Invalid image data']);
+            exit;
+        }
+        
+        // Generate filename
+        $cleanName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $user['PERSON_USING'] ?? 'user');
+        $filename = date('Ymd_His') . '_' . $cleanName . '_' . substr($lineid, -5) . '.jpg';
+        
+        // Define upload directory (adjust path as needed)
+        $uploadDir = __DIR__ . '/../../home/pages/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        
+        $filePath = $uploadDir . $filename;
+        
+        // Save the file
+        file_put_contents($filePath, $imageBinary);
+        
+        // Update the database with the new photo path
+        $stmt = $conn->prepare("UPDATE BS_Device SET PERSON_IMAGE = :image WHERE LINEID = :id");
+        $stmt->execute([
+            ':image' => $filename,
+            ':id' => $lineid
+        ]);
+        
+        // Log the action
+        logAuditChange(
+            $conn,
+            $lineid,
+            'UPLOAD_PHOTO',
+            ['PERSON_IMAGE' => ['old' => '', 'new' => $filename]],
+            'Photo uploaded by user'
+        );
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Photo uploaded successfully',
+            'imagePath' => $filename
+        ]);
+        
+    } catch (PDOException $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Database error: ' . $e->getMessage()
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
 if ($action === 'loaddevice') {
     header('Content-Type: application/json');
     
@@ -89,6 +253,202 @@ if ($action === 'loaddevice') {
     exit();
 }
 
+// ============================================
+// GET CONCERNS BY SERIAL
+// ============================================
+// ============================================
+// UPDATE CONCERN STATUS WITH USER TRACKING
+// ============================================
+function updateConcernStatus($conn, $lineId, $newStatus) {
+    if (!$conn || !$lineId || !$newStatus) {
+        return ['success' => false, 'message' => 'Missing required parameters'];
+    }
+    
+    // Validate status
+    $validStatuses = ['OPEN', 'ACKNOWLEDGE', 'RESOLVED'];
+    if (!in_array($newStatus, $validStatuses)) {
+        return ['success' => false, 'message' => 'Invalid status value'];
+    }
+    
+    // Get current user
+    $changedBy = $_SESSION['Name_of_user'] ?? $_SESSION['username'] ?? 'SYSTEM';
+    
+    try {
+        // Build the update query based on the new status
+        $sql = "UPDATE dbo.Concerns SET STATUS = :status";
+        
+        // Add the appropriate user tracking field
+        if ($newStatus === 'ACKNOWLEDGE') {
+            $sql .= ", ACKNOWLEDGED_BY = :user";
+        } elseif ($newStatus === 'RESOLVED') {
+            $sql .= ", RESOLVED_BY = :user";
+        }
+        
+        $sql .= " WHERE LINEID = :lineId";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':status', $newStatus);
+        $stmt->bindParam(':user', $changedBy);
+        $stmt->bindParam(':lineId', $lineId);
+        
+        if ($stmt->execute()) {
+            // Also log to audit
+            logAuditChange(
+                $conn,
+                $lineId,
+                'CONCERN_STATUS_UPDATE',
+                ['STATUS' => ['old' => null, 'new' => $newStatus]],
+                'Concern status updated to: ' . $newStatus . ' by ' . $changedBy
+            );
+            
+            return ['success' => true, 'message' => 'Status updated successfully', 'user' => $changedBy];
+        } else {
+            return ['success' => false, 'message' => 'Failed to update status'];
+        }
+    } catch (PDOException $e) {
+        error_log("Database error in updateConcernStatus: " . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+// ============================================
+// GET CONCERNS BY SERIAL (UPDATED TO INCLUDE USER FIELDS)
+// ============================================
+function getConcernsBySerial($conn, $serial) {
+    if (!$conn || !$serial) {
+        return ['concerns' => []];
+    }
+    
+    try {
+        $sql = "SELECT 
+                    LINEID, 
+                    SERIAL, 
+                    PERSON, 
+                    NUMBER, 
+                    DATE_RAISE, 
+                    TIME_RAISE, 
+                    TYPE, 
+                    CONCERN_TEXT, 
+                    REMARKS, 
+                    STATUS,
+                    ACKNOWLEDGED_BY,
+                    RESOLVED_BY
+                FROM dbo.Concerns 
+                WHERE SERIAL = :serial 
+                ORDER BY 
+                    CASE 
+                        WHEN STATUS = 'OPEN' THEN 1 
+                        WHEN STATUS = 'ACKNOWLEDGE' THEN 2 
+                        WHEN STATUS = 'RESOLVED' THEN 3 
+                        ELSE 4 
+                    END, 
+                    DATE_RAISE DESC, 
+                    TIME_RAISE DESC";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':serial', $serial);
+        $stmt->execute();
+        
+        $concerns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return ['concerns' => $concerns];
+    } catch (PDOException $e) {
+        error_log("Database error in getConcernsBySerial: " . $e->getMessage());
+        return ['concerns' => [], 'error' => $e->getMessage()];
+    }
+}
+
+// ============================================
+// ADD CONCERN
+// ============================================
+function addConcern($conn, $data) {
+    if (!$conn || !$data) {
+        return ['success' => false, 'message' => 'Missing required parameters'];
+    }
+    
+    $serial = $data['serial'] ?? '';
+    $person = $data['person'] ?? '';
+    $number = $data['number'] ?? '';
+    $type = $data['type'] ?? '';
+    $concernText = $data['concern_text'] ?? '';
+    $remarks = $data['remarks'] ?? '';
+    
+    if (empty($serial) || empty($type)) {
+        return ['success' => false, 'message' => 'Serial and Type are required'];
+    }
+    
+    try {
+        $sql = "INSERT INTO dbo.Concerns 
+                    (SERIAL, PERSON, NUMBER, DATE_RAISE, TIME_RAISE, TYPE, CONCERN_TEXT, REMARKS, STATUS)
+                VALUES 
+                    (:serial, :person, :number, CAST(GETDATE() AS DATE), CAST(GETDATE() AS TIME), :type, :concern_text, :remarks, 'OPEN')";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':serial', $serial);
+        $stmt->bindParam(':person', $person);
+        $stmt->bindParam(':number', $number);
+        $stmt->bindParam(':type', $type);
+        $stmt->bindParam(':concern_text', $concernText);
+        $stmt->bindParam(':remarks', $remarks);
+        
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Concern added successfully'];
+        } else {
+            return ['success' => false, 'message' => 'Failed to add concern'];
+        }
+    } catch (PDOException $e) {
+        error_log("Database error in addConcern: " . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+// ============================================
+// ACTION HANDLER FOR CONCERNS
+// ============================================
+if ($action === 'get_concerns_by_serial') {
+    header('Content-Type: application/json');
+    
+    $serial = $_GET['serial'] ?? '';
+    if (empty($serial)) {
+        echo json_encode(['concerns' => []]);
+        exit;
+    }
+    
+    $result = getConcernsBySerial($conn, $serial);
+    echo json_encode($result);
+    exit;
+}
+
+if ($action === 'update_concern_status') {
+    header('Content-Type: application/json');
+    
+    $input = json_decode(file_get_contents('php://input'), true);
+    $lineId = $input['lineid'] ?? '';
+    $status = $input['status'] ?? '';
+    
+    if (empty($lineId) || empty($status)) {
+        echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+        exit;
+    }
+    
+    $result = updateConcernStatus($conn, $lineId, $status);
+    echo json_encode($result);
+    exit;
+}
+
+if ($action === 'add_concern') {
+    header('Content-Type: application/json');
+    
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    $result = addConcern($conn, $input);
+    echo json_encode($result);
+    exit;
+}
+
+// ============================================
+// UPDATE ONLY ACTION
+// ============================================
 if ($action === 'updateonly') {
     header('Content-Type: application/json');
 
@@ -207,6 +567,9 @@ if ($action === 'updateonly') {
     }
 }
 
+// ============================================
+// UPDATE DEVICE ACTION
+// ============================================
 if ($action === 'update_device') {
     header('Content-Type: application/json');
 
@@ -389,6 +752,9 @@ if ($action === 'update_device') {
     }
 }
 
+// ============================================
+// TODAY SUBMISSIONS
+// ============================================
 if ($action === 'today_submissions') {
     header('Content-Type: application/json');
 
@@ -437,6 +803,9 @@ if ($action === 'today_submissions') {
     exit;
 }
 
+// ============================================
+// TODAY SUBMISSIONS 2
+// ============================================
 if ($action === 'today_submissions2') {
     header('Content-Type: application/json');
 
@@ -485,6 +854,9 @@ if ($action === 'today_submissions2') {
     exit;
 }
 
+// ============================================
+// TOTAL DEVICES
+// ============================================
 if ($action === 'totaldevices') {
     header('Content-Type: application/json');
 
@@ -511,6 +883,9 @@ if ($action === 'totaldevices') {
     exit;
 }
 
+// ============================================
+// SET AS COMPLIED
+// ============================================
 if ($action === 'setascomplied') {
     header('Content-Type: application/json');
 
@@ -544,6 +919,9 @@ if ($action === 'setascomplied') {
     }
 }
 
+// ============================================
+// LOAD CHECK RESULT
+// ============================================
 if ($action === 'loadcheckresult') {
     header('Content-Type: application/json');
 
@@ -562,13 +940,24 @@ if ($action === 'loadcheckresult') {
             exit;
         }
 
-        $sql = "
-            SELECT *
-            FROM BS_Checking_logs
-            WHERE COMPANY_ID = :companyid
-              AND DATE_CHECKED BETWEEN :datefrom AND :dateto
-            ORDER BY SITE_ID ASC
-        ";
+                $sql = "
+                        SELECT
+                                cl.*,
+                                d.LOAD_STATUS,
+                                d.DEVICE_STATUS,
+                                d.DEVICE_IR_COMPLIED,
+                                d.IS_COMPLIED,
+                                d.LAST_LOAD_HISTORY,
+                                d.LOAD_TERMS,
+                                d.BALANCE AS DEVICE_BALANCE
+                        FROM BS_Checking_logs cl
+                        LEFT JOIN BS_Device d
+                                ON cl.COMPANY_ID = d.COMPANY_ID
+                             AND cl.NUMBER = d.NUMBER
+                        WHERE cl.COMPANY_ID = :companyid
+                            AND cl.DATE_CHECKED BETWEEN :datefrom AND :dateto
+                        ORDER BY cl.SITE_ID ASC
+                ";
 
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':companyid', $companyId, PDO::PARAM_STR);
@@ -594,6 +983,9 @@ if ($action === 'loadcheckresult') {
     exit;
 }
 
+// ============================================
+// UPDATE BALANCE
+// ============================================
 if ($action === 'update_balance') {
     header('Content-Type: application/json');
 
@@ -666,6 +1058,9 @@ if ($action === 'update_balance') {
     }
 }
 
+// ============================================
+// UPDATE LOAD STATUS ALL
+// ============================================
 if ($action === 'update_load_status_all') {
     header('Content-Type: application/json');
 
@@ -709,6 +1104,9 @@ if ($action === 'update_load_status_all') {
     }
 }
 
+// ============================================
+// GET AUDIT
+// ============================================
 if ($action === 'get_audit') {
     header('Content-Type: application/json');
     
@@ -745,6 +1143,9 @@ if ($action === 'get_audit') {
     exit;
 }
 
+// ============================================
+// FOR LOAD
+// ============================================
 if ($action === 'forload') {
     $company_id = $_SESSION['Company_ID'] ?? '';
 
@@ -764,7 +1165,14 @@ if ($action === 'forload') {
             BALANCE,
             LOAD_STATUS,
             LAST_LOAD_HISTORY,
-            DATEADD(MONTH, LOAD_TERMS, LAST_LOAD_HISTORY) AS NEXT_LOAD_SCHEDULE,
+            CASE
+                WHEN BALANCE < COALESCE(DATA_BALANCE_MIN, 0) THEN 'FOR LOAD'
+                WHEN LAST_LOAD_HISTORY IS NULL THEN 'FOR LOAD'
+                WHEN LAST_LOAD_HISTORY < DATEADD(MONTH, -10, GETDATE()) THEN 'FOR LOAD'
+                WHEN LAST_LOAD_HISTORY < DATEADD(MONTH, -CAST(COALESCE(LOAD_TERMS, 0) AS INT), GETDATE()) THEN 'FOR LOAD'
+                ELSE 'OK'
+            END AS EFFECTIVE_LOAD_STATUS,
+            DATEADD(MONTH, CAST(COALESCE(LOAD_TERMS, 0) AS INT), CAST(LAST_LOAD_HISTORY AS DATE)) AS NEXT_LOAD_SCHEDULE,
             LOAD_TERMS,
             IS_COMPLIED,
             DATA_BALANCE_MIN,
@@ -777,7 +1185,6 @@ if ($action === 'forload') {
             CHARGED_TO
         FROM BS_Device
         WHERE COMPANY_ID = :company_id
-          AND LOAD_STATUS = 'FOR LOAD'
           AND STATUS IN ('ACTIVE', 'IN USE')
         ORDER BY DATE_ADDED DESC
     ";
@@ -786,12 +1193,22 @@ if ($action === 'forload') {
     $stmt->execute([':company_id' => $company_id]);
 
     $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $devices = array_filter($devices, fn($d) => $d['LOAD_STATUS'] === 'FOR LOAD');
+    $devices = array_values(array_filter($devices, function ($d) {
+        return ($d['EFFECTIVE_LOAD_STATUS'] ?? 'OK') === 'FOR LOAD';
+    }));
 
-    echo json_encode(array_values($devices));
+    foreach ($devices as &$device) {
+        $device['LOAD_STATUS'] = $device['EFFECTIVE_LOAD_STATUS'] ?? $device['LOAD_STATUS'];
+    }
+    unset($device);
+
+    echo json_encode($devices);
     exit;
 }
 
+// ============================================
+// UNSUBMITTED DEVICES
+// ============================================
 if ($action === 'unsubmitted_devices') {
     header('Content-Type: application/json');
 
@@ -906,6 +1323,9 @@ if ($action === 'unsubmitted_devices') {
     exit;
 }
 
+// ============================================
+// UPDATE REMARKS
+// ============================================
 if ($action === 'update_remarks') {
     header('Content-Type: application/json');
 
@@ -945,6 +1365,9 @@ if ($action === 'update_remarks') {
     }
 }
 
+// ============================================
+// GET REMARKS VALUES
+// ============================================
 if ($action === 'get_remarks_values') {
     header('Content-Type: application/json');
 
@@ -969,6 +1392,9 @@ if ($action === 'get_remarks_values') {
     }
 }
 
+// ============================================
+// SUBMIT BY QR
+// ============================================
 if ($action === 'submit_by_qr') {
     header('Content-Type: application/json');
 
@@ -1147,6 +1573,37 @@ if ($action === 'submit_by_qr') {
             'success' => false,
             'message' => $e->getMessage()
         ]);
+    }
+    exit;
+}
+
+// ============================================
+// GET CONCERNS BY SERIAL - ALTERNATIVE (for backward compatibility)
+// ============================================
+if ($action === 'get_concerns') {
+    header('Content-Type: application/json');
+    
+    $lineid = $_GET['lineid'] ?? '';
+    if (empty($lineid)) {
+        echo json_encode(['concerns' => []]);
+        exit;
+    }
+    
+    try {
+        // First get the serial from the device using LINEID
+        $stmt = $conn->prepare("SELECT SERIAL FROM BS_Device WHERE LINEID = :lineid");
+        $stmt->execute([':lineid' => $lineid]);
+        $device = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$device || empty($device['SERIAL'])) {
+            echo json_encode(['concerns' => []]);
+            exit;
+        }
+        
+        $result = getConcernsBySerial($conn, $device['SERIAL']);
+        echo json_encode($result);
+    } catch (PDOException $e) {
+        echo json_encode(['concerns' => [], 'error' => $e->getMessage()]);
     }
     exit;
 }

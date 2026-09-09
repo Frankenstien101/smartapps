@@ -44,6 +44,25 @@
   .preview-item { position: relative; border: 1px solid #dee2e6; border-radius: 4px; padding: 5px; background: white; }
   .preview-item img { max-width: 80px; max-height: 80px; border-radius: 4px; }
   .preview-item .remove-btn { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%; background: #dc3545; color: white; border: none; font-size: 12px; cursor: pointer; line-height: 20px; text-align: center; }
+  
+  /* Search input styling */
+  .search-container { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+  .search-input-wrapper .fa-search { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; }
+  .search-input-wrapper input { padding-left: 35px; border-radius: 20px; border: 1px solid #ced4da; height: 38px; width: 100%; }
+  .search-input-wrapper input:focus { border-color: #80bdff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25); outline: none; }
+  .search-input-wrapper input::placeholder { color: #adb5bd; font-size: 13px; }
+  .search-clear-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6c757d; cursor: pointer; display: none; }
+  .search-clear-btn:hover { color: #dc3545; }
+  .search-stats { font-size: 12px; color: #6c757d; }
+  .device-table th,
+  .device-table td { vertical-align: middle; white-space: nowrap; }
+  .device-table td .badge { margin-right: 0.3rem; }
+  .device-table td .attachment-badge { cursor: pointer; margin-right: 0.25rem; }
+  .device-table td .action-button { white-space: normal; }
+  .device-table tbody tr.no-results td { text-align: center; padding: 2rem; }
+  .device-table tbody tr:hover { background-color: #f8f9fa; }
+  .device-card-item.requested-device-card { outline: 3px solid #ffc107; outline-offset: 4px; }
 </style>
 </head>
 <body>
@@ -56,6 +75,10 @@
         <span class="badge badge-danger ml-2" id="deviceCountBadge">0</span>
       </h4>
       <div class="header-actions">
+        <div class="btn-group btn-group-sm" role="group" aria-label="View mode">
+          <button class="btn btn-outline-primary" id="gridViewBtn" title="Grid view"><i class="fas fa-th"></i></button>
+          <button class="btn btn-outline-primary" id="listViewBtn" title="List view"><i class="fas fa-list"></i></button>
+        </div>
         <button class="btn btn-info btn-sm" id="refreshBtn">
           <i class="fas fa-sync mr-1"></i> Refresh
         </button>
@@ -65,19 +88,47 @@
       </div>
     </div>
     <div class="mt-2">
-      <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Showing devices with <strong>DEVICE_STATUS != 'Good Condition'</strong></small>
+      <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Showing devices with <strong> Issue</strong></small>
     </div>
   </div>
 
   <div class="content-area container-fluid">
     <!-- Filter Section -->
     <div class="filter-section">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <label class="mb-0"><i class="fas fa-filter mr-1"></i> Filter by Site:</label>
-        <button class="btn btn-link btn-sm" id="clearFilterBtn">Clear Filter</button>
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap: 10px;">
+        <div class="search-container flex-grow-1">
+          <div class="search-input-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search by Number, Serial, User, Site, Brand, Model..." />
+            <button class="search-clear-btn" id="searchClearBtn" title="Clear search">
+              <i class="fas fa-times-circle"></i>
+            </button>
+          </div>
+          <span class="search-stats" id="searchStats"></span>
+        </div>
+        <div>
+          <button class="btn btn-link btn-sm" id="clearFilterBtn">Clear Filter</button>
+        </div>
       </div>
       <div id="siteFilterContainer" class="d-flex flex-wrap gap-2" style="gap: 0.5rem;"></div>
       <div class="mt-2 text-muted small" id="filterStats"></div>
+    </div>
+
+    <div id="deviceTableWrapper" class="table-responsive d-none mb-4">
+      <table class="table table-bordered table-hover table-sm mb-0 device-table">
+        <thead class="thead-light">
+          <tr>
+            <th>Device</th>
+            <th>Serial</th>
+            <th>User / Dept</th>
+            <th>Site / Status</th>
+            <th>Brand / Model</th>
+            <th>Balance</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="deviceTableBody"></tbody>
+      </table>
     </div>
 
     <div id="deviceList" class="row"></div>
@@ -109,6 +160,10 @@
             <p class="font-weight-bold" id="ir_device_number">-</p>
           </div>
           <div class="col-md-3">
+            <label><i class="fas fa-barcode mr-1"></i> Serial Number</label>
+            <p class="font-weight-bold" id="ir_device_serial">-</p>
+          </div>
+          <div class="col-md-3">
             <label><i class="fas fa-user mr-1"></i> User</label>
             <p id="ir_device_user">-</p>
           </div>
@@ -116,9 +171,15 @@
             <label><i class="fas fa-map-marker-alt mr-1"></i> Site</label>
             <p id="ir_device_site">-</p>
           </div>
-          <div class="col-md-3">
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-6">
             <label><i class="fas fa-info-circle mr-1"></i> Status</label>
             <p><span class="badge status-bad" id="ir_device_status">-</span></p>
+          </div>
+          <div class="col-md-6">
+            <label><i class="fas fa-sim-card mr-1"></i> IMEI</label>
+            <p id="ir_device_imei">-</p>
           </div>
         </div>
         
@@ -245,10 +306,11 @@
 
 <script>
 const API_BASE = '/LM/datafetcher/ir_compliance_api.php';
-const BASE_URL = window.location.origin; // Gets http://localhost:3000
+const BASE_URL = window.location.origin;
 
 let allDevices = [];
 let currentSiteFilter = '';
+let currentSearchTerm = '';
 let cameraStreams = {
     camera1: null,
     camera2: null
@@ -282,9 +344,23 @@ function exportDevices() {
   if (currentSiteFilter) {
     devicesToExport = allDevices.filter(d => d.SITE_ID === currentSiteFilter);
   }
+  
+  // Apply search filter for export
+  if (currentSearchTerm) {
+    const term = currentSearchTerm.toLowerCase();
+    devicesToExport = devicesToExport.filter(device => {
+      return (device.NUMBER || '').toLowerCase().includes(term) ||
+             (device.SERIAL || '').toLowerCase().includes(term) ||
+             (device.PERSON_USING || '').toLowerCase().includes(term) ||
+             (device.SITE_ID || '').toLowerCase().includes(term) ||
+             (device.BRAND || '').toLowerCase().includes(term) ||
+             (device.MODEL || '').toLowerCase().includes(term) ||
+             (device.DEPARTMENT || '').toLowerCase().includes(term);
+    });
+  }
 
   if (devicesToExport.length === 0) {
-    showToast('No devices match the current filter', 'danger');
+    showToast('No devices match the current filters', 'danger');
     return;
   }
 
@@ -336,29 +412,22 @@ function exportDevices() {
   showToast(`Exported ${devicesToExport.length} devices successfully!`, 'success');
 }
 
-// View attachment - FIXED: Use absolute URL from root
+// View attachment
 function viewAttachment(attachmentPath) {
     if (!attachmentPath) {
         showToast('No attachment available', 'danger');
         return;
     }
     
-    // Decode the path if it was URL encoded
     let cleanPath = decodeURIComponent(attachmentPath);
-    
-    // Remove any leading dots, double slashes, or encoded characters
     cleanPath = cleanPath.replace(/\.\./g, '').replace(/\/\//g, '/');
     
-    // Build the full URL
     let fullUrl;
     if (cleanPath.startsWith('/uploads/')) {
-        // Use absolute URL from root
         fullUrl = BASE_URL + cleanPath;
     } else if (cleanPath.startsWith('uploads/')) {
-        // If it doesn't start with /, add it
         fullUrl = BASE_URL + '/' + cleanPath;
     } else if (!cleanPath.startsWith('http')) {
-        // If it's a relative path, assume it's in the uploads directory
         const filename = cleanPath.split('/').pop();
         fullUrl = BASE_URL + '/uploads/ir_compliance/' + filename;
     } else {
@@ -369,7 +438,6 @@ function viewAttachment(attachmentPath) {
     
     const content = document.getElementById('attachmentPreviewContent');
     
-    // Check if it's an image by extension
     const ext = fullUrl.split('.').pop().toLowerCase();
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
     
@@ -403,6 +471,98 @@ function viewAttachment(attachmentPath) {
     $('#viewAttachmentModal').modal('show');
 }
 
+// Search function
+function applySearch() {
+  const searchInput = document.getElementById('searchInput');
+  currentSearchTerm = searchInput.value.trim();
+  
+  const clearBtn = document.getElementById('searchClearBtn');
+  if (currentSearchTerm) {
+    clearBtn.style.display = 'block';
+  } else {
+    clearBtn.style.display = 'none';
+  }
+  
+  applyFilters();
+}
+
+// Render single device row for list view
+function createDeviceRow(device) {
+  const isNotGood = device.DEVICE_STATUS !== 'Good Condition';
+  const statusClass = isNotGood ? 'status-bad' : 'status-ok';
+  const statusText = device.DEVICE_STATUS || 'Unknown';
+  const irComplied = device.DEVICE_IR_COMPLIED === 1 || device.DEVICE_IR_COMPLIED === '1' || device.DEVICE_IR_COMPLIED === true;
+  const irBadgeClass = irComplied ? 'badge-success' : 'badge-warning';
+  const irBadgeText = irComplied ? 'IR COMPLIED' : 'PENDING IR';
+  
+  const row = document.createElement('tr');
+  row.setAttribute('data-lineid', device.LINEID);
+  row.setAttribute('data-site', device.SITE_ID || '');
+  row.setAttribute('data-number', (device.NUMBER || '').toLowerCase());
+  row.setAttribute('data-serial', (device.SERIAL || '').toLowerCase());
+  row.setAttribute('data-user', (device.PERSON_USING || '').toLowerCase());
+  row.setAttribute('data-brand', (device.BRAND || '').toLowerCase());
+  row.setAttribute('data-model', (device.MODEL || '').toLowerCase());
+  row.setAttribute('data-department', (device.DEPARTMENT || '').toLowerCase());
+  row.setAttribute('data-site', (device.SITE_ID || '').toLowerCase());
+
+  const attachmentButtons = [];
+  if (device.ATTACHMENT1) {
+    const attachment1 = device.ATTACHMENT1.replace(/\/\//g, '/');
+    attachmentButtons.push(`<span class="badge badge-info attachment-badge" data-attachment="${encodeURIComponent(attachment1)}">File 1</span>`);
+  }
+  if (device.ATTACHMENT2) {
+    const attachment2 = device.ATTACHMENT2.replace(/\/\//g, '/');
+    attachmentButtons.push(`<span class="badge badge-info attachment-badge" data-attachment="${encodeURIComponent(attachment2)}">File 2</span>`);
+  }
+
+  const actionButton = !irComplied ? `
+    <button class="btn btn-sm btn-warning mark-complied-btn" data-lineid="${device.LINEID}" data-number="${device.NUMBER || ''}">
+      <i class="fas fa-clipboard-check mr-1"></i> Mark IR Complied
+    </button>
+  ` : `
+    <button class="btn btn-sm btn-outline-success" disabled>
+      <i class="fas fa-check-circle mr-1"></i> Already Complied
+    </button>
+  `;
+
+  row.innerHTML = `
+    <td>#${device.LINEID || 'N/A'}<br><small>${device.NUMBER || 'No Number'}</small></td>
+    <td>${device.SERIAL || '-'}</td>
+    <td>${device.PERSON_USING || '-'}<br><small>${device.DEPARTMENT || '-'}</small></td>
+    <td>${device.SITE_ID || '-'}<br><small>${statusText}</small></td>
+    <td>${device.BRAND || '-'}<br><small>${device.MODEL || '-'}</small></td>
+    <td>${Number(device.BALANCE || 0).toFixed(2)} GB</td>
+    <td class="action-button">
+      <span class="badge ${statusClass} status-badge">${statusText}</span>
+      <span class="badge ${irBadgeClass} compliance-badge">${irBadgeText}</span>
+      ${attachmentButtons.join(' ')}
+      ${actionButton}
+    </td>
+  `;
+
+  return row;
+}
+
+function attachRowEventHandlers(rowElement) {
+  const markBtn = rowElement.querySelector('.mark-complied-btn');
+  const attachmentBadges = rowElement.querySelectorAll('.attachment-badge');
+
+  if (markBtn) {
+    markBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openIRComplianceModal(markBtn.dataset.lineid);
+    });
+  }
+
+  attachmentBadges.forEach(badge => {
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      viewAttachment(badge.dataset.attachment);
+    });
+  });
+}
+
 // Render single device card
 function createDeviceCard(device) {
   const isNotGood = device.DEVICE_STATUS !== 'Good Condition';
@@ -418,12 +578,37 @@ function createDeviceCard(device) {
   cardDiv.setAttribute('data-lineid', device.LINEID);
   cardDiv.setAttribute('data-site', device.SITE_ID || '');
   
-  // Clean up attachment paths
+  const actionButtonHtml = !irComplied ? `
+            <button class="btn btn-sm btn-warning mark-complied-btn" data-lineid="${device.LINEID}" data-number="${device.NUMBER || ''}">
+              <i class="fas fa-clipboard-check mr-1"></i> Mark IR Complied
+            </button>
+          ` : `
+            <button class="btn btn-sm btn-outline-success" disabled>
+              <i class="fas fa-check-circle mr-1"></i> Already Complied
+            </button>
+          `;
+  
+  // Store searchable data as data attributes for filtering
+  cardDiv.setAttribute('data-number', (device.NUMBER || '').toLowerCase());
+  cardDiv.setAttribute('data-serial', (device.SERIAL || '').toLowerCase());
+  cardDiv.setAttribute('data-user', (device.PERSON_USING || '').toLowerCase());
+  cardDiv.setAttribute('data-brand', (device.BRAND || '').toLowerCase());
+  cardDiv.setAttribute('data-model', (device.MODEL || '').toLowerCase());
+  cardDiv.setAttribute('data-department', (device.DEPARTMENT || '').toLowerCase());
+  
   let attachment1 = device.ATTACHMENT1 || '';
   let attachment2 = device.ATTACHMENT2 || '';
   attachment1 = attachment1.replace(/\/\//g, '/');
   attachment2 = attachment2.replace(/\/\//g, '/');
   
+  const detailBadges = [];
+  if (attachment1) {
+    detailBadges.push(`<span class="badge badge-info attachment-badge" data-attachment="${encodeURIComponent(attachment1)}">File 1</span>`);
+  }
+  if (attachment2) {
+    detailBadges.push(`<span class="badge badge-info attachment-badge" data-attachment="${encodeURIComponent(attachment2)}">File 2</span>`);
+  }
+
   cardDiv.innerHTML = `
     <div class="card h-100">
       <div class="card-body">
@@ -437,6 +622,9 @@ function createDeviceCard(device) {
         <h6 class="card-title">
           <i class="fas fa-sim-card mr-2 text-primary"></i> ${device.NUMBER || 'No Number'}
         </h6>
+        <p class="card-text mb-1" style="font-size: 1.0rem;">
+          <strong>Serial:</strong> ${device.SERIAL || '-'}
+        </p>
         <p class="card-text mb-2">
           <strong>User:</strong> ${device.PERSON_USING || '-'}
         </p>
@@ -458,26 +646,17 @@ function createDeviceCard(device) {
           <span class="detail-label">Balance:</span>
           <span><small>${Number(device.BALANCE || 0).toFixed(2)} GB</small></span>
         </div>
-        ${attachment1 || attachment2 ? `
+        ${detailBadges.length ? `
           <div class="mt-2">
             <small class="text-muted"><i class="fas fa-paperclip mr-1"></i> Attachments:</small>
-            ${attachment1 ? `<span class="badge badge-info attachment-badge" data-attachment="${encodeURIComponent(attachment1)}" style="cursor:pointer;">File 1</span>` : ''}
-            ${attachment2 ? `<span class="badge badge-info attachment-badge" data-attachment="${encodeURIComponent(attachment2)}" style="cursor:pointer;">File 2</span>` : ''}
+            ${detailBadges.join(' ')}
           </div>
         ` : ''}
         <div class="card-footer-actions">
-          ${!irComplied ? `
-            <button class="btn btn-sm btn-warning flex-fill mark-complied-btn" data-lineid="${device.LINEID}" data-number="${device.NUMBER || ''}">
-              <i class="fas fa-clipboard-check mr-1"></i> Mark IR Complied
-            </button>
-          ` : `
-            <button class="btn btn-sm btn-outline-success flex-fill" disabled>
-              <i class="fas fa-check-circle mr-1"></i> Already Complied
-            </button>
-          `}
+          ${actionButtonHtml}
         </div>
       </div>
-    </div>
+    </div>  
   `;
   return cardDiv;
 }
@@ -500,18 +679,42 @@ function updateSiteFilterUI() {
     el.addEventListener('click', () => {
       currentSiteFilter = el.dataset.site;
       updateSiteFilterUI();
-      applyFilterToDOM();
+      applyFilters();
     });
   });
 }
 
-// Apply filter
-function applyFilterToDOM() {
+// Apply all filters (site + search)
+function applyFilters() {
   const allCardContainers = document.querySelectorAll('.device-card-item');
+  const allTableRows = document.querySelectorAll('#deviceTableBody tr');
   let visibleCount = 0;
+  const searchTerm = currentSearchTerm.toLowerCase();
+  
   allCardContainers.forEach(card => {
     const siteAttr = card.getAttribute('data-site');
-    if (!currentSiteFilter || siteAttr === currentSiteFilter) {
+    const matchesSite = !currentSiteFilter || siteAttr === currentSiteFilter;
+    
+    let matchesSearch = true;
+    if (searchTerm) {
+      const number = card.getAttribute('data-number') || '';
+      const serial = card.getAttribute('data-serial') || '';
+      const user = card.getAttribute('data-user') || '';
+      const brand = card.getAttribute('data-brand') || '';
+      const model = card.getAttribute('data-model') || '';
+      const department = card.getAttribute('data-department') || '';
+      const site = card.getAttribute('data-site') || '';
+      
+      matchesSearch = number.includes(searchTerm) ||
+                      serial.includes(searchTerm) ||
+                      user.includes(searchTerm) ||
+                      brand.includes(searchTerm) ||
+                      model.includes(searchTerm) ||
+                      department.includes(searchTerm) ||
+                      site.includes(searchTerm);
+    }
+    
+    if (matchesSite && matchesSearch) {
       card.style.display = '';
       visibleCount++;
     } else {
@@ -519,48 +722,97 @@ function applyFilterToDOM() {
     }
   });
   
+  allTableRows.forEach(row => {
+    const siteAttr = row.getAttribute('data-site');
+    const matchesSite = !currentSiteFilter || siteAttr === currentSiteFilter;
+    
+    let matchesSearch = true;
+    if (searchTerm) {
+      const number = row.getAttribute('data-number') || '';
+      const serial = row.getAttribute('data-serial') || '';
+      const user = row.getAttribute('data-user') || '';
+      const brand = row.getAttribute('data-brand') || '';
+      const model = row.getAttribute('data-model') || '';
+      const department = row.getAttribute('data-department') || '';
+      const site = row.getAttribute('data-site') || '';
+      
+      matchesSearch = number.includes(searchTerm) ||
+                      serial.includes(searchTerm) ||
+                      user.includes(searchTerm) ||
+                      brand.includes(searchTerm) ||
+                      model.includes(searchTerm) ||
+                      department.includes(searchTerm) ||
+                      site.includes(searchTerm);
+    }
+    
+    if (matchesSite && matchesSearch) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  
   document.getElementById('deviceCountBadge').textContent = visibleCount;
   
-  const stats = document.getElementById('filterStats');
-  if (currentSiteFilter) {
-    stats.innerHTML = `<i class="fas fa-chart-line mr-1"></i> Showing ${visibleCount} of ${allDevices.length} devices for site: <strong>${currentSiteFilter}</strong>`;
+  // Update search stats
+  const searchStats = document.getElementById('searchStats');
+  if (currentSearchTerm) {
+    searchStats.textContent = `Found ${visibleCount} matching devices`;
   } else {
-    stats.innerHTML = `<i class="fas fa-chart-line mr-1"></i> Showing all ${allDevices.length} devices with status != 'Good Condition'`;
+    searchStats.textContent = '';
   }
   
+  const stats = document.getElementById('filterStats');
+  let filterParts = [];
+  if (currentSiteFilter) filterParts.push(`Site: ${currentSiteFilter}`);
+  if (currentSearchTerm) filterParts.push(`Search: "${currentSearchTerm}"`);
+  
+  if (filterParts.length > 0) {
+    stats.innerHTML = `<i class="fas fa-chart-line mr-1"></i> Showing ${visibleCount} of ${allDevices.length} devices (${filterParts.join(' | ')})`;
+  } else {
+    stats.innerHTML = `<i class="fas fa-chart-line mr-1"></i> Showing all ${allDevices.length} devices`;
+  }
+  
+  // Show/hide no results message
+  const noMatchRow = document.getElementById('noDevicesMatchRow');
+  const existingWarn = document.getElementById('noDevicesMatch');
+
   if (visibleCount === 0 && allDevices.length > 0) {
-    const noMatch = document.getElementById('noDevicesMatch');
-    if(!noMatch) {
+    if (!existingWarn) {
       const warnDiv = document.createElement('div');
       warnDiv.id = 'noDevicesMatch';
       warnDiv.className = 'col-12 text-center alert alert-warning mt-3';
-      warnDiv.innerText = 'No devices match the selected site filter.';
+      warnDiv.innerHTML = `
+        <i class="fas fa-search fa-2x mb-2 d-block"></i>
+        No devices match the current filters. Try adjusting your search or clear the filters.
+      `;
       document.getElementById('deviceList').appendChild(warnDiv);
     }
+    if (!noMatchRow) {
+      const noMatch = document.createElement('tr');
+      noMatch.id = 'noDevicesMatchRow';
+      noMatch.className = 'no-results';
+      noMatch.innerHTML = `
+        <td colspan="7">
+          <i class="fas fa-search fa-2x mb-2 d-block"></i>
+          No devices match the current filters. Try adjusting your search or clear the filters.
+        </td>
+      `;
+      document.getElementById('deviceTableBody').appendChild(noMatch);
+    }
   } else {
-    const existingWarn = document.getElementById('noDevicesMatch');
-    if(existingWarn) existingWarn.remove();
+    if (existingWarn) existingWarn.remove();
+    if (noMatchRow) noMatchRow.remove();
   }
 }
 
+
 // Replace a single device card
 function replaceDeviceCard(updatedDevice) {
-  const existingCard = document.querySelector(`.device-card-item[data-lineid="${updatedDevice.LINEID}"]`);
-  const newCard = createDeviceCard(updatedDevice);
-  if (existingCard) {
-    existingCard.replaceWith(newCard);
-    attachCardEventHandlers(newCard);
-  } else {
-    const container = document.getElementById('deviceList');
-    container.appendChild(newCard);
-    attachCardEventHandlers(newCard);
-    applyFilterToDOM();
-  }
   const index = allDevices.findIndex(d => d.LINEID == updatedDevice.LINEID);
   if (index !== -1) allDevices[index] = updatedDevice;
   else allDevices.push(updatedDevice);
-  updateSiteFilterUI();
-  applyFilterToDOM();
+  loadDevices();
 }
 
 // Attach event listeners for buttons on a specific card
@@ -578,7 +830,6 @@ function attachCardEventHandlers(cardElement) {
   attachmentBadges.forEach(badge => {
     badge.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Get the raw path (already encoded)
       const rawPath = badge.dataset.attachment;
       viewAttachment(rawPath);
     });
@@ -592,9 +843,11 @@ function openIRComplianceModal(lineid) {
   
   document.getElementById('ir_lineid').value = lineid;
   document.getElementById('ir_device_number').textContent = device.NUMBER || 'N/A';
+  document.getElementById('ir_device_serial').textContent = device.SERIAL || 'N/A';
   document.getElementById('ir_device_user').textContent = device.PERSON_USING || 'N/A';
   document.getElementById('ir_device_site').textContent = device.SITE_ID || 'N/A';
   document.getElementById('ir_device_status').textContent = device.DEVICE_STATUS || 'Unknown';
+  document.getElementById('ir_device_imei').textContent = device.IMEI || 'N/A';
   document.getElementById('ir_remarks').value = '';
   document.getElementById('ir_complied_check').checked = false;
   
@@ -777,8 +1030,9 @@ function markAsIRComplied() {
           if (res.device.ATTACHMENT1) updatedDevice.ATTACHMENT1 = res.device.ATTACHMENT1;
           if (res.device.ATTACHMENT2) updatedDevice.ATTACHMENT2 = res.device.ATTACHMENT2;
         }
-        replaceDeviceCard(updatedDevice);
+        allDevices[index] = updatedDevice;
       }
+      loadDevices();
       showToast('Device marked as IR Complied successfully!', 'success');
       $('#irComplianceModal').modal('hide');
     } else {
@@ -812,20 +1066,27 @@ function loadDevices() {
         document.getElementById('deviceList').innerHTML = '';
         document.getElementById('deviceCountBadge').textContent = '0';
         updateSiteFilterUI();
-        applyFilterToDOM();
+        applyFilters();
         return;
       }
       allDevices = data;
       const container = document.getElementById('deviceList');
       container.innerHTML = '';
+      const tableBody = document.getElementById('deviceTableBody');
+      tableBody.innerHTML = '';
       allDevices.forEach(device => {
         const card = createDeviceCard(device);
         container.appendChild(card);
         attachCardEventHandlers(card);
+
+        const row = createDeviceRow(device);
+        tableBody.appendChild(row);
+        attachRowEventHandlers(row);
       });
       document.getElementById('deviceCountBadge').textContent = allDevices.length;
       updateSiteFilterUI();
-      applyFilterToDOM();
+      applyFilters();
+      showRequestedDeviceCard();
     })
     .catch(error => {
       loading.classList.add('d-none');
@@ -833,6 +1094,27 @@ function loadDevices() {
       errorMsg.classList.remove('d-none');
     });
 }
+
+  function showRequestedDeviceCard() {
+    const lineid = new URLSearchParams(window.location.search).get('lineid');
+    if (!lineid) return;
+
+    currentSiteFilter = '';
+    currentSearchTerm = '';
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    const searchClearBtn = document.getElementById('searchClearBtn');
+    if (searchClearBtn) searchClearBtn.style.display = 'none';
+
+    const card = document.querySelector(`.device-card-item[data-lineid="${CSS.escape(lineid)}"]`);
+    if (!card) return;
+
+    document.getElementById('deviceTableWrapper').classList.add('d-none');
+    document.getElementById('deviceList').classList.remove('d-none');
+    card.classList.add('requested-device-card');
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => card.classList.remove('requested-device-card'), 4000);
+  }
 
 // File input label update
 document.addEventListener('change', function(e) {
@@ -868,6 +1150,27 @@ document.addEventListener('change', function(e) {
 document.addEventListener('DOMContentLoaded', () => {
   loadDevices();
   
+  // Search input events
+  const searchInput = document.getElementById('searchInput');
+  const searchClearBtn = document.getElementById('searchClearBtn');
+  
+  searchInput.addEventListener('input', applySearch);
+  
+  searchClearBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    applySearch();
+    searchInput.focus();
+  });
+  
+  // Press Escape to clear search
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      searchInput.value = '';
+      applySearch();
+      searchInput.blur();
+    }
+  });
+  
   document.getElementById('refreshBtn').addEventListener('click', () => {
     loadDevices();
     showToast('Refreshing device list...', 'success');
@@ -876,8 +1179,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('exportBtn').addEventListener('click', exportDevices);
   document.getElementById('clearFilterBtn').addEventListener('click', () => {
     currentSiteFilter = '';
+    searchInput.value = '';
+    currentSearchTerm = '';
+    document.getElementById('searchClearBtn').style.display = 'none';
     updateSiteFilterUI();
-    applyFilterToDOM();
+    applyFilters();
   });
   
   document.querySelectorAll('.camera-toggle-btn').forEach(btn => {
@@ -902,6 +1208,31 @@ document.addEventListener('DOMContentLoaded', () => {
       capturePhoto(videoId, attachmentKey, previewId);
     });
   });
+  
+  const deviceTableWrapper = document.getElementById('deviceTableWrapper');
+  const deviceList = document.getElementById('deviceList');
+
+  document.getElementById('gridViewBtn').addEventListener('click', () => {
+    deviceTableWrapper.classList.add('d-none');
+    deviceList.classList.remove('d-none');
+    document.getElementById('gridViewBtn').classList.add('btn-primary');
+    document.getElementById('gridViewBtn').classList.remove('btn-outline-primary');
+    document.getElementById('listViewBtn').classList.add('btn-outline-primary');
+    document.getElementById('listViewBtn').classList.remove('btn-primary');
+  });
+  
+  document.getElementById('listViewBtn').addEventListener('click', () => {
+    deviceTableWrapper.classList.remove('d-none');
+    deviceList.classList.add('d-none');
+    document.getElementById('listViewBtn').classList.add('btn-primary');
+    document.getElementById('listViewBtn').classList.remove('btn-outline-primary');
+    document.getElementById('gridViewBtn').classList.add('btn-outline-primary');
+    document.getElementById('gridViewBtn').classList.remove('btn-primary');
+  });
+
+  // Default view mode
+  document.getElementById('gridViewBtn').classList.add('btn-primary');
+  deviceTableWrapper.classList.add('d-none');
   
   document.querySelectorAll('.close-camera-btn').forEach(btn => {
     btn.addEventListener('click', () => {
